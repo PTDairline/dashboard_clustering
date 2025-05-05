@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chỉ số đánh giá phân cụm</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        .table-container {
+            max-height: 600px; /* Tăng chiều cao bảng */
+            overflow-y: auto; /* Thêm thanh cuộn dọc */
+            overflow-x: auto; /* Thêm thanh cuộn ngang nếu cần */
+        }
+        table {
+            width: 100%;
+            font-size: 14px;
+        }
+        th, td {
+            text-align: center;
+            padding: 8px;
+        }
+        .plot-container {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('home') }}">FIFA Stats Dashboard</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('home') }}">Bằng dữ liệu</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('add_data') }}">Thêm dữ liệu</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('stats') }}">Thống kê</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('clustering_metrics') }}">Chỉ số đánh giá phân cụm</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('pca_clusters') }}">PCA & Phân cụm</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Chỉ số đánh giá phân cụm</h1>
+        <div class="table-container">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Phương pháp</th>
+                        <th>Số cụm (k) / eps / min_samples</th>
+                        <th>Số cụm</th>
+                        <th>Số nhiễu</th>
+                        <th>Silhouette</th>
+                        <th>Calinski-Harabasz</th>
+                        <th>Davies-Bouldin</th>
+                        <th>Starczewski</th>
+                        <th>Wiroonsri</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td>{{ result.method }}</td>
+                        <td>
+                            {% if result.method in ['KMeans', 'Hierarchical', 'GMM'] %}
+                                k={{ result.k }}
+                            {% else %}
+                                eps={{ result.eps }}, min_samples={{ result.min_samples }}
+                            {% endif %}
+                        </td>
+                        <td>{{ result.n_clusters }}</td>
+                        <td>{{ result.n_noise }}</td>
+                        <td>{{ result.Silhouette }}</td>
+                        <td>{{ result.Calinski_Harabasz }}</td>
+                        <td>{{ result.Davies_Bouldin }}</td>
+                        <td>{{ result.Starczewski }}</td>
+                        <td>{{ result.Wiroonsri }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Hiển thị biểu đồ -->
+        <div class="row plot-container">
+            {% for metric, url in plot_urls.items() %}
+            <div class="col-md-6">
+                <h3>{{ metric }} Score</h3>
+                <img src="{{ url }}" class="img-fluid" alt="{{ metric }} Plot">
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

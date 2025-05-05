@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xử lý BCVI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <!-- Thêm MathJax để hiển thị công thức toán học -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">Dashboard Phân cụm</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Tải dữ liệu</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('data_preview') }}">Tổng quan dữ liệu</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('process_data') }}">Xử lý dữ liệu</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('select_model') }}">Chọn mô hình</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('bcvi') }}">Xử lý BCVI</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5 pt-5">
+        <h1 class="text-center mb-4">Xử lý BCVI</h1>
+
+        <div class="alert-container">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Hiển thị thông số CVI từ các mô hình -->
+        {% if data.models %}
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white">Thông số CVI từ các mô hình</div>
+            <div class="card-body">
+                {% for model in data.models %}
+                <h3 class="mt-4">{{ model }}</h3>
+                <h5>Chỉ số đánh giá cụm (CVI)</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>k</th>
+                                <th>Silhouette</th>
+                                <th>Calinski-Harabasz</th>
+                                <th>Davies-Bouldin</th>
+                                <th>Starczewski</th>
+                                <th>Wiroonsri</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cvi in data.plots[model].cvi %}
+                            <tr>
+                                <td>{{ cvi.k }}</td>
+                                <td>{{ cvi.Silhouette|round(3) }}</td>
+                                <td>{{ cvi['Calinski-Harabasz']|round(3) }}</td>
+                                <td>{{ cvi['Davies-Bouldin']|round(3) }}</td>
+                                <td>{{ cvi.Starczewski|round(3) }}</td>
+                                <td>{{ cvi.Wiroonsri|round(3) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Form nhập hệ số alpha -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white">Nhập hệ số Alpha</div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="row mb-3">
+                        {% for k in data.k_range %}
+                        <div class="col-md-3 mb-2">
+                            <label for="alpha_{{ k }}" class="form-label">\(\alpha_{ {{ k }} }\)</label>
+                            <input type="number" step="0.01" class="form-control" id="alpha_{{ k }}" name="alpha_{{ k }}" value="1.0" min="0" required>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary">Tính BCVI</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Hiển thị kết quả BCVI -->
+        {% if data.bcvi_results %}
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-success text-white">Kết quả BCVI</div>
+            <div class="card-body">
+                {% for model in data.models %}
+                <h3 class="mt-4">{{ model }}</h3>
+                <p><strong>Số k tối ưu (dựa trên Silhouette BCVI):</strong> {{ data.optimal_k[model] }}</p>
+                <h5>Kết quả BCVI</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>k</th>
+                                <th>Silhouette BCVI</th>
+                                <th>Calinski-Harabasz BCVI</th>
+                                <th>Davies-Bouldin BCVI</th>
+                                <th>Starczewski BCVI</th>
+                                <th>Wiroonsri BCVI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in data.bcvi_results[model] %}
+                            <tr {% if result.k == data.optimal_k[model] %}class="table-success"{% endif %}>
+                                <td>{{ result.k }}</td>
+                                <td>{{ result.bcvi['Silhouette']|round(3) }}</td>
+                                <td>{{ result.bcvi['Calinski-Harabasz']|round(3) }}</td>
+                                <td>{{ result.bcvi['Davies-Bouldin']|round(3) }}</td>
+                                <td>{{ result.bcvi['Starczewski']|round(3) }}</td>
+                                <td>{{ result.bcvi['Wiroonsri']|round(3) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="alert alert-warning text-center">
+            Chưa có dữ liệu CVI. Vui lòng quay lại tab "Chọn mô hình" và chạy mô hình phân cụm.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        <p>© 2025 Dashboard Phân cụm. All rights reserved.</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

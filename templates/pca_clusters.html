@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCA và Phân Cụm KMeans/GMM</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">FIFA Stats Dashboard</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/data">Bảng dữ liệu</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/add_data">Thêm dữ liệu</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/stats">Thống kê</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/clusters">Kết quả phân cụm</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/pca_clusters">PCA & Phân cụm</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <h1 class="mt-4">PCA và Phân Cụm KMeans/GMM</h1>
+        {% for plot in pca_plots %}
+            <div class="card mt-4">
+                <div class="card-header">Số cụm (k = {{ plot.k }})</div>
+                <div class="card-body">
+                    <h3>KMeans</h3>
+                    <img src="{{ plot.kmeans_plot }}" alt="KMeans k={{ plot.k }}" class="img-fluid">
+                    <h3 class="mt-3">GMM</h3>
+                    <img src="{{ plot.gmm_plot }}" alt="GMM k={{ plot.k }}" class="img-fluid">
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
