@@ -1,5 +1,10 @@
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
+from sklearn.metrics import silhouette_score, davies_bouldin_score
+import logging
+
+# Thiết lập logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def calinski_harabasz_index(X, labels, centroids):
     """
@@ -7,9 +12,11 @@ def calinski_harabasz_index(X, labels, centroids):
     Giá trị lớn nhất là tối ưu.
     """
     try:
+        logging.debug("Bắt đầu tính Calinski-Harabasz")
         n = len(X)
         k = len(np.unique(labels))
         if k < 2 or n <= k:
+            logging.warning("Số cụm không hợp lệ để tính Calinski-Harabasz")
             return 0.0
         
         # Tính trung tâm toàn bộ tập dữ liệu (v_0)
@@ -30,112 +37,49 @@ def calinski_harabasz_index(X, labels, centroids):
                 wss += np.sum(distances)
         
         if wss == 0:
+            logging.warning("WSS bằng 0, trả về Calinski-Harabasz mặc định")
             return 0.0
         
         # Tính CH index
         ch = (n - k) * bss / ((k - 1) * wss)
+        logging.debug(f"Calinski-Harabasz: {ch}")
         return ch
     except Exception as e:
+        logging.error(f"Lỗi tính Calinski-Harabasz: {str(e)}")
         return 0.0
 
 def silhouette_index(X, labels):
     """
-    Tính toán chỉ số Silhouette (SH).
+    Tính toán chỉ số Silhouette (SH) bằng sklearn.
     Giá trị lớn nhất là tối ưu.
     """
     try:
+        logging.debug("Bắt đầu tính Silhouette")
         if len(np.unique(labels)) < 2:
+            logging.warning("Số cụm không hợp lệ để tính Silhouette")
             return 0.0
-        
-        n = len(X)
-        k = len(np.unique(labels))
-        
-        # Tính khoảng cách giữa tất cả các cặp điểm
-        distances = squareform(pdist(X))
-        
-        silhouette_scores = np.zeros(n)
-        for i in range(n):
-            # Cụm của điểm i
-            cluster_i = labels[i]
-            cluster_points = np.where(labels == cluster_i)[0]
-            cluster_size = len(cluster_points)
-            
-            if cluster_size <= 1:
-                silhouette_scores[i] = 0
-                continue
-            
-            # Tính a(i): Khoảng cách trung bình đến các điểm trong cùng cụm
-            a_i = np.sum(distances[i, cluster_points]) / (cluster_size - 1)
-            
-            # Tính b(i): Khoảng cách trung bình đến các điểm trong cụm gần nhất khác
-            b_i = float('inf')
-            for r in range(k):
-                if r == cluster_i:
-                    continue
-                other_cluster_points = np.where(labels == r)[0]
-                if len(other_cluster_points) == 0:
-                    continue
-                b_i_r = np.mean(distances[i, other_cluster_points])
-                b_i = min(b_i, b_i_r)
-            
-            # Tính silhouette score cho điểm i
-            if max(a_i, b_i) == 0:
-                silhouette_scores[i] = 0
-            else:
-                silhouette_scores[i] = (b_i - a_i) / max(a_i, b_i)
-        
-        # Tính chỉ số Silhouette trung bình
-        sh = np.mean(silhouette_scores)
+        sh = silhouette_score(X, labels)
+        logging.debug(f"Silhouette: {sh}")
         return sh
     except Exception as e:
+        logging.error(f"Lỗi tính Silhouette: {str(e)}")
         return 0.0
 
 def davies_bouldin_index(X, labels, centroids, q=2, t=2):
     """
-    Tính toán chỉ số Davies-Bouldin (DB).
+    Tính toán chỉ số Davies-Bouldin (DB) bằng sklearn.
     Giá trị nhỏ nhất là tối ưu.
     """
     try:
+        logging.debug("Bắt đầu tính Davies-Bouldin")
         if len(np.unique(labels)) < 2:
+            logging.warning("Số cụm không hợp lệ để tính Davies-Bouldin")
             return float('inf')
-        
-        k = len(np.unique(labels))
-        
-        # Tính S_i,q cho mỗi cụm
-        S = np.zeros(k)
-        for i in range(k):
-            points = X[labels == i]
-            if len(points) == 0:
-                S[i] = float('inf')
-                continue
-            distances = np.linalg.norm(points - centroids[i], axis=1)
-            S[i] = (np.sum(distances ** q) / len(points)) ** (1/q)
-        
-        # Tính M_ij,t giữa các cặp cụm
-        M = np.zeros((k, k))
-        for i in range(k):
-            for j in range(k):
-                if i == j:
-                    M[i, j] = float('inf')
-                else:
-                    diff = centroids[i] - centroids[j]
-                    M[i, j] = (np.sum(np.abs(diff) ** t)) ** (1/t)
-        
-        # Tính R_i,q
-        R = np.zeros(k)
-        for i in range(k):
-            max_val = -float('inf')
-            for j in range(k):
-                if i == j:
-                    continue
-                val = (S[i] + S[j]) / M[i, j]
-                max_val = max(max_val, val)
-            R[i] = max_val
-        
-        # Tính DB index
-        db = np.mean(R)
+        db = davies_bouldin_score(X, labels)
+        logging.debug(f"Davies-Bouldin: {db}")
         return db if np.isfinite(db) else float('inf')
     except Exception as e:
+        logging.error(f"Lỗi tính Davies-Bouldin: {str(e)}")
         return float('inf')
 
 def starczewski_index(X, labels, centroids):
@@ -145,19 +89,17 @@ def starczewski_index(X, labels, centroids):
     Chỉ tính E(k) và D(k) tại k hiện tại.
     """
     try:
+        logging.debug("Bắt đầu tính Starczewski")
         if len(np.unique(labels)) < 2:
+            logging.warning("Số cụm không hợp lệ để tính Starczewski")
             return 0.0
         
         k = len(np.unique(labels))
         
         # Tính D(k)
-        max_dist = -float('inf')
-        min_dist = float('inf')
-        for i in range(k):
-            for j in range(i + 1, k):
-                dist = np.linalg.norm(centroids[i] - centroids[j])
-                max_dist = max(max_dist, dist)
-                min_dist = min(min_dist, dist)
+        centroid_dists = pdist(centroids)
+        max_dist = np.max(centroid_dists)
+        min_dist = np.min(centroid_dists)
         if min_dist == 0:
             D_k = 0.0
         else:
@@ -172,40 +114,56 @@ def starczewski_index(X, labels, centroids):
             if len(points) > 0:
                 den += np.sum(np.linalg.norm(points - centroids[j], axis=1))
         if den == 0:
+            logging.warning("Denominator bằng 0, trả về Starczewski mặc định")
             E_k = 0.0
         else:
             E_k = num / den
         
-        # Tính STR(k) (bỏ qua E(k-1) và D(k+1))
-        return E_k * D_k
+        # Tính STR(k)
+        str_idx = E_k * D_k
+        logging.debug(f"Starczewski: {str_idx}")
+        return str_idx
     except Exception as e:
+        logging.error(f"Lỗi tính Starczewski: {str(e)}")
         return 0.0
 
 def wiroonsri_index(X, labels, centroids):
     """
-    Tính toán chỉ số Wiroonsri (WI).
+    Tính toán chỉ số Wiroonsri (WI) bằng cách lấy mẫu ngẫu nhiên.
     Giá trị lớn nhất là tối ưu.
     Chỉ tính NC(k) tại k hiện tại.
     """
     try:
+        logging.debug("Bắt đầu tính Wiroonsri")
         if len(np.unique(labels)) < 2:
+            logging.warning("Số cụm không hợp lệ để tính Wiroonsri")
             return 0.0
         
         n = len(X)
+        if n < 2000:
+            sample_size = n
+        else:
+            sample_size = 2000  # Lấy mẫu 8000 điểm để giảm độ phức tạp
         
-        # Tính vector d: Khoảng cách giữa tất cả các cặp điểm
-        d = pdist(X)
+        # Lấy mẫu ngẫu nhiên
+        indices = np.random.choice(n, size=sample_size, replace=False)
+        X_sample = X[indices]
+        labels_sample = labels[indices]
+        
+        # Tính vector d: Khoảng cách giữa các cặp điểm trong mẫu
+        d = pdist(X_sample)
         
         # Tính vector c(k): Khoảng cách giữa các trung tâm cụm tương ứng
         c = np.zeros(len(d))
         idx = 0
-        for i in range(n):
-            for j in range(i + 1, n):
-                c[idx] = np.linalg.norm(centroids[labels[i]] - centroids[labels[j]])
+        for i in range(sample_size):
+            for j in range(i + 1, sample_size):
+                c[idx] = np.linalg.norm(centroids[labels_sample[i]] - centroids[labels_sample[j]])
                 idx += 1
         
         # Tính NC(k) = Corr(d, c(k))
         if np.std(d) == 0 or np.std(c) == 0:
+            logging.warning("Độ lệch chuẩn của d hoặc c bằng 0, trả về Wiroonsri mặc định")
             nc_k = 0.0
         else:
             nc_k = np.corrcoef(d, c)[0, 1]
@@ -213,19 +171,24 @@ def wiroonsri_index(X, labels, centroids):
         # Tính NC(1)
         std_d = np.std(d)
         if std_d == 0:
+            logging.warning("Độ lệch chuẩn của d bằng 0, trả về NC(1) mặc định")
             nc_1 = 0.0
         else:
             nc_1 = std_d / (np.max(d) - np.min(d))
         
-        # Tính WI(k) (bỏ qua NCI1 và NCI2 do cần k-1 và k+1)
-        return nc_k if nc_k >= nc_1 else nc_1
+        # Tính WI(k)
+        wi = nc_k if nc_k >= nc_1 else nc_1
+        logging.debug(f"Wiroonsri: {wi}")
+        return wi
     except Exception as e:
+        logging.error(f"Lỗi tính Wiroonsri: {str(e)}")
         return 0.0
 
 def suggest_optimal_k(plots, k_range):
     """
     Gợi ý số k tối ưu dựa trên các chỉ số CVI và biểu đồ Elbow.
     """
+    logging.debug("Bắt đầu suggest_optimal_k")
     # Khởi tạo biến để lưu kết quả
     optimal_k = k_range[0]  # Giá trị mặc định
     reasoning = []
@@ -320,5 +283,6 @@ def suggest_optimal_k(plots, k_range):
     else:
         optimal_k = k_range[0]  # Nếu không có gợi ý nào, chọn k nhỏ nhất
         reasoning.append(f"Không có chỉ số CVI nào khả dụng, mặc định chọn k={optimal_k}.")
-
+    
+    logging.debug(f"Optimal k: {optimal_k}")
     return optimal_k, "\n".join(reasoning)
