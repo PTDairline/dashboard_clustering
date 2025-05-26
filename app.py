@@ -22,7 +22,7 @@ from routes.index import index
 from routes.data_preview import data_preview
 from routes.process_data import process_data, download_pca
 from routes.select_model import select_model
-from routes.bcvi import bcvi
+from routes.bcvi import bcvi, download_bcvi
 
 # Đăng ký các route với ứng dụng Flask
 app.route('/', methods=['GET', 'POST'])(index)
@@ -31,6 +31,7 @@ app.route('/process_data', methods=['GET', 'POST'])(process_data)
 app.route('/download_pca')(download_pca)
 app.route('/select_model', methods=['GET', 'POST'])(select_model)
 app.route('/bcvi', methods=['GET', 'POST'])(bcvi)  
+app.route('/download_bcvi')(download_bcvi)
 
 if __name__ == '__main__':
     app.run(debug=True)

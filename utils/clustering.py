@@ -1,5 +1,5 @@
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg')  # Comment: Sử dụng backend 'Agg' cho matplotlib để vẽ biểu đồ trong môi trường không có GUI (phù hợp với Flask).
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,7 +13,18 @@ import skfuzzy as fuzz
 import logging
 from sklearn.decomposition import PCA
 
-# Thiết lập logging
+# Comment: Import các thư viện và module cần thiết.
+# - matplotlib: Dùng để vẽ biểu đồ (Silhouette, Elbow, Scatter).
+# - pandas, numpy: Dùng cho xử lý dữ liệu.
+# - sklearn.cluster: Các mô hình phân cụm (KMeans, AgglomerativeClustering, GaussianMixture).
+# - sklearn.metrics: Các chỉ số đánh giá cụm (Silhouette, Calinski-Harabasz, Davies-Bouldin).
+# - starczewski_index, wiroonsri_index: Chỉ số CVI tùy chỉnh từ module utils.metrics.
+# - skfuzzy: Dùng cho thuật toán Fuzzy C-means.
+# - logging: Dùng để ghi log.
+# - sklearn.decomposition.PCA: Dùng để giảm chiều dữ liệu khi vẽ Scatter.
+
+# Comment: Thiết lập logging để ghi lại thông tin debug.
+# - Định dạng log: thời gian, mức độ, thông điệp.
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def compute_bcvi(cvi_values, k_range, alpha, n, opt_type='max'):
@@ -31,87 +42,97 @@ def compute_bcvi(cvi_values, k_range, alpha, n, opt_type='max'):
     - bcvi: List các giá trị BCVI(k).
     """
     try:
-        logging.debug("Bắt đầu tính BCVI")
-        # Kiểm tra độ dài đầu vào
+        # Tối ưu hiệu suất bằng cách giảm logging và sử dụng numpy
+        # Kiểm tra độ dài của các tham số đầu vào
         if len(cvi_values) != len(k_range) or len(alpha) != len(k_range):
             raise ValueError(f"Length mismatch: cvi_values ({len(cvi_values)}), k_range ({len(k_range)}), alpha ({len(alpha)})")
         
+        # Kiểm tra tham số `alpha` không âm
         if any(a < 0 for a in alpha):
             raise ValueError("Tất cả alpha_k phải không âm")
         
-        # Kiểm tra và làm sạch cvi_values
-        cleaned_cvi_values = []
-        for value in cvi_values:
-            if value is None or np.isinf(value) or np.isnan(value):
-                logging.warning(f"Giá trị CVI không hợp lệ: {value}, thay bằng 0")
-                cleaned_cvi_values.append(0.0)
-            else:
-                cleaned_cvi_values.append(float(value))
-        logging.debug(f"Cleaned CVI values: {cleaned_cvi_values}")
+        # Chuyển dữ liệu sang numpy để tính toán nhanh hơn
+        cvi_array = np.array(cvi_values, dtype=float)
+        alpha_array = np.array(alpha, dtype=float)
         
-        # Tính r_k
-        rk = []
+        # Thay các giá trị không hợp lệ bằng 0
+        cvi_array = np.nan_to_num(cvi_array, nan=0.0, posinf=0.0, neginf=0.0)
+        
+        # Tính r_k bằng vectorized operations (nhanh hơn loops)
+        rk = np.zeros_like(cvi_array)
         if opt_type == 'min':
-            max_cvi = max(cleaned_cvi_values)
-            denominator = sum(max_cvi - cvi for cvi in cleaned_cvi_values)
-            if denominator > 0:
-                rk = [(max_cvi - cvi) / denominator for cvi in cleaned_cvi_values]
+            max_cvi = np.max(cvi_array)
+            differences = max_cvi - cvi_array
+            sum_diff = np.sum(differences)
+            if sum_diff > 0:
+                rk = differences / sum_diff
             else:
-                rk = [1 / len(k_range)] * len(k_range)
+                rk.fill(1.0 / len(k_range))
         else:  # opt_type == 'max'
-            min_cvi = min(cleaned_cvi_values)
-            denominator = sum(cvi - min_cvi for cvi in cleaned_cvi_values)
-            if denominator > 0:
-                rk = [(cvi - min_cvi) / denominator for cvi in cleaned_cvi_values]
+            min_cvi = np.min(cvi_array)
+            differences = cvi_array - min_cvi
+            sum_diff = np.sum(differences)
+            if sum_diff > 0:
+                rk = differences / sum_diff
             else:
-                rk = [1 / len(k_range)] * len(k_range)
+                rk.fill(1.0 / len(k_range))
         
-        # Kiểm tra tổng r_k
-        rk_sum = sum(rk)
-        if not abs(rk_sum - 1.0) < 1e-6:
-            raise ValueError(f"Tổng r_k không bằng 1: {rk_sum}")
-        logging.debug(f"r_k values: {rk}")
+        # Kiểm tra tổng r_k ≈ 1
+        if not np.isclose(np.sum(rk), 1.0):
+            rk = rk / np.sum(rk)  # Chuẩn hóa nếu tổng không bằng 1
         
-        # Tính alpha_0
-        alpha_0 = sum(alpha)
+        # Tính alpha_0 và BCVI
+        alpha_0 = np.sum(alpha_array)
+        bcvi = (alpha_array + n * rk) / (alpha_0 + n)
         
-        # Tính BCVI(k)
-        bcvi = [(alpha[k_idx] + n * rk[k_idx]) / (alpha_0 + n) for k_idx in range(len(k_range))]
-        logging.debug(f"BCVI values: {bcvi}")
+        # Chỉ log kết quả cuối cùng để tối ưu hiệu suất
+        logging.debug(f"BCVI calculation completed with {len(bcvi)} values")
         
         return bcvi
     except Exception as e:
+        # Comment: Xử lý lỗi nếu tính BCVI thất bại.
         logging.error(f"Lỗi tính BCVI: {str(e)}")
         raise Exception(f"Error computing BCVI: {str(e)}")
 
 def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selected_features, explained_variance_ratio):
     try:
+        # Comment: Ghi log bắt đầu hàm `generate_clustering_plots`.
+        # - `X`: Dữ liệu đầu vào.
+        # - `model_name`: Tên mô hình (KMeans, GMM, Hierarchical, FuzzyCMeans).
+        # - `k_range`: Phạm vi số cụm để thử.
+        # - `selected_k`: Số cụm tối đa được chọn.
+        # - `use_pca`: Trạng thái sử dụng PCA.
+        # - `selected_features`: Danh sách feature đã chọn.
+        # - `explained_variance_ratio`: Tỷ lệ phương sai giải thích (nếu dùng PCA).
         logging.debug(f"Bắt đầu generate_clustering_plots: model={model_name}, k_range={k_range}, selected_k={selected_k}")
-        # Kiểm tra dữ liệu đầu vào
+        
+        # Comment: Kiểm tra dữ liệu đầu vào có rỗng hoặc ít hơn 2 cột không.
         if X.empty or len(X.columns) < 2:
             logging.error("Dữ liệu không đủ để chạy phân cụm")
             return {'error': 'Dữ liệu không đủ để chạy phân cụm (cần ít nhất 2 cột số và không rỗng).'}
         
-        # Kiểm tra giá trị NaN trong dữ liệu
+        # Comment: Kiểm tra dữ liệu có giá trị NaN không.
         if X.isna().any().any():
             logging.error("Dữ liệu chứa giá trị NaN")
             return {'error': 'Dữ liệu chứa giá trị NaN. Vui lòng xử lý dữ liệu trước khi chạy phân cụm.'}
         
-        # Kiểm tra kiểu dữ liệu: Chỉ giữ các cột số
+        # Comment: Lọc các cột số từ dữ liệu.
+        # - Đảm bảo chỉ sử dụng các cột số để chạy phân cụm.
         X_numeric = X.select_dtypes(include=[np.number])
         if X_numeric.empty or len(X_numeric.columns) < 2:
             logging.error("Dữ liệu không chứa đủ cột số")
             return {'error': 'Dữ liệu không chứa đủ cột số (cần ít nhất 2 cột số).'}
         
-        # Kiểm tra giá trị vô cực (inf)
+        # Comment: Kiểm tra dữ liệu có giá trị vô cực (inf) không.
         if np.isinf(X_numeric.values).any():
             logging.error("Dữ liệu chứa giá trị vô cực")
             return {'error': 'Dữ liệu chứa giá trị vô cực (inf). Vui lòng xử lý dữ liệu trước khi chạy phân cụm.'}
         
-        # Chuyển đổi dữ liệu thành numpy array với kiểu float
+        # Comment: Chuyển đổi dữ liệu thành mảng numpy với kiểu float.
         X_array = X_numeric.values.astype(float)
         
-        # Kiểm tra kích thước dữ liệu
+        # Comment: Kiểm tra kích thước dữ liệu.
+        # - Đảm bảo có ít nhất 2 mẫu và 2 feature để chạy phân cụm.
         n_samples, n_features = X_array.shape
         logging.debug(f"Kích thước dữ liệu: samples={n_samples}, features={n_features}")
         if n_samples < 2:
@@ -121,7 +142,8 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
             logging.error("Số feature quá nhỏ")
             return {'error': 'Số lượng feature quá nhỏ (ít nhất 2 feature để phân cụm).'}
         
-        # Kiểm tra giá trị k_range
+        # Comment: Kiểm tra tính hợp lệ của `k_range`.
+        # - Đảm bảo `k_range` không rỗng và các giá trị `k` nằm trong khoảng hợp lệ.
         if not k_range:
             logging.error("k_range rỗng")
             return {'error': 'Phạm vi số cụm (k_range) rỗng. Vui lòng chọn số cụm hợp lệ.'}
@@ -134,7 +156,11 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
                 logging.error(f"Số cụm k={k} lớn hơn số mẫu {n_samples}")
                 return {'error': f'Số cụm k={k} không hợp lệ. Số cụm phải nhỏ hơn số mẫu ({n_samples}).'}
         
-        # Chuẩn bị kết quả
+        # Comment: Khởi tạo dictionary `plots` để lưu kết quả phân cụm và biểu đồ.
+        # - `silhouette`: Điểm Silhouette và biểu đồ.
+        # - `elbow`: Điểm WCSS (Within-Cluster Sum of Squares) và biểu đồ Elbow.
+        # - `scatter`: Biểu đồ phân cụm (Scatter).
+        # - `cvi`: Các chỉ số CVI (Silhouette, Calinski-Harabasz, v.v.).
         plots = {
             'silhouette': {'scores': [], 'plot': None},
             'elbow': {'inertias': [], 'plot': None},
@@ -142,21 +168,28 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
             'cvi': []
         }
         
-        # Tính các chỉ số đánh giá cụm
+        # Comment: Khởi tạo các list để lưu điểm Silhouette, WCSS, và chỉ số CVI.
         silhouette_scores = []
         inertias = []
         cvi_scores = []
         
-        # Giảm chiều dữ liệu để vẽ scatter (nếu cần)
+        # Comment: Giảm chiều dữ liệu để vẽ Scatter nếu số chiều lớn hơn 2.
+        # - Sử dụng PCA để giảm xuống 2 chiều (cho biểu đồ 2D).
         X_plot = X_array
         if n_features > 2:
             logging.debug("Giảm chiều dữ liệu để vẽ scatter")
             pca = PCA(n_components=2)
             X_plot = pca.fit_transform(X_array)
         
+        # Comment: Lặp qua từng giá trị `k` trong `k_range` để chạy phân cụm và tính toán các chỉ số.
         for k in k_range:
             logging.debug(f"Chạy phân cụm với k={k}, model={model_name}")
-            # Khởi tạo mô hình phân cụm
+            
+            # Comment: Khởi tạo và chạy mô hình phân cụm dựa trên `model_name`.
+            # - KMeans: Sử dụng K-means với `n_init=1`, `max_iter=300`.
+            # - GMM: Sử dụng Gaussian Mixture Model với `n_init=1`, `max_iter=100`.
+            # - Hierarchical: Sử dụng Agglomerative Clustering.
+            # - FuzzyCMeans: Sử dụng Fuzzy C-means với tham số tối ưu.
             if model_name == 'KMeans':
                 model = KMeans(n_clusters=k, n_init=1, max_iter=300, random_state=42)
                 labels = model.fit_predict(X_array)
@@ -173,8 +206,11 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
                 centroids = np.array([X_array[labels == i].mean(axis=0) for i in range(k)])
                 membership = None
             elif model_name == 'FuzzyCMeans':
-                # Sử dụng Fuzzy C-Means từ skfuzzy với tham số tối ưu
                 try:
+                    # Comment: Chạy Fuzzy C-means với tham số tối ưu.
+                    # - `m=1.5`: Hệ số fuzziness.
+                    # - `error=0.05`: Ngưỡng lỗi để dừng.
+                    # - `maxiter=300`: Số vòng lặp tối đa.
                     logging.info(f"Running Fuzzy C-Means with k={k}, shape of X.T: {X_array.T.shape}")
                     cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(
                         X_array.T, k, m=1.5, error=0.05, maxiter=300, init=None, seed=42
@@ -190,16 +226,18 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
                 logging.error(f"Mô hình {model_name} không hỗ trợ")
                 return {'error': f'Mô hình {model_name} không được hỗ trợ.'}
             
-            # Sử dụng toàn bộ dữ liệu để vẽ scatter
+            # Comment: Sử dụng toàn bộ dữ liệu để vẽ Scatter.
             sample_labels = labels
             
-            # Kiểm tra kích thước trước khi vẽ
+            # Comment: Kiểm tra kích thước của `X_plot` và `sample_labels` trước khi vẽ.
+            # - Đảm bảo số lượng nhãn khớp với số lượng điểm để vẽ Scatter.
             logging.debug(f"Kích thước X_plot: {X_plot.shape}, Kích thước sample_labels: {len(sample_labels)}")
             if len(sample_labels) != X_plot.shape[0]:
                 logging.error(f"Kích thước không khớp: sample_labels ({len(sample_labels)}) không bằng X_plot ({X_plot.shape[0]})")
                 return {'error': f"Kích thước không khớp: sample_labels ({len(sample_labels)}) không bằng X_plot ({X_plot.shape[0]})"}
             
-            # Tính các chỉ số đánh giá cụm trên toàn bộ dữ liệu
+            # Comment: Tính các chỉ số đánh giá cụm (CVI) trên toàn bộ dữ liệu.
+            # - Nếu chỉ có 1 cụm duy nhất, đặt các chỉ số về giá trị mặc định.
             logging.debug(f"Tính chỉ số CVI cho k={k}")
             if len(np.unique(labels)) > 1:
                 silhouette = silhouette_score(X_array, labels)
@@ -211,10 +249,11 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
                 calinski = 0
                 davies = float('inf')
             
-            # Tính các chỉ số tùy chỉnh
+            # Comment: Tính các chỉ số CVI tùy chỉnh (Starczewski, Wiroonsri).
             starczewski = starczewski_index(X_array, labels, centroids)
             wiroonsri = wiroonsri_index(X_array, labels, centroids)
             
+            # Comment: Lưu các chỉ số CVI vào danh sách `cvi_scores`.
             cvi_scores.append({
                 'k': k,
                 'Silhouette': silhouette,
@@ -225,17 +264,21 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
             })
             
             silhouette_scores.append(silhouette)
+            
+            # Comment: Tính WCSS (inertia) cho KMeans và Fuzzy C-means.
+            # - KMeans: Sử dụng `model.inertia_`.
+            # - Fuzzy C-means: Tính thủ công dựa trên ma trận thành viên `u`.
             if model_name in ['KMeans', 'FuzzyCMeans']:
                 if model_name == 'KMeans':
                     inertias.append(model.inertia_)
                 else:
-                    # Tối ưu hóa tính inertia cho Fuzzy C-Means
                     logging.debug(f"Tính inertia cho Fuzzy C-Means với k={k}")
                     distances = np.linalg.norm(X_array[:, np.newaxis] - centroids, axis=2) ** 2  # Shape: (n, k)
                     inertia = np.sum((u.T ** 2) * distances)
                     inertias.append(inertia)
             
-            # Tạo biểu đồ scatter cho tất cả k
+            # Comment: Tạo biểu đồ Scatter cho từng giá trị `k`.
+            # - Vẽ biểu đồ 2D với `X_plot` (dữ liệu đã giảm chiều), sử dụng `sample_labels` để tô màu.
             logging.debug(f"Tạo biểu đồ scatter cho k={k}")
             plt.figure(figsize=(6, 3))  # Kích thước nhỏ để tăng tốc
             plt.scatter(X_plot[:, 0], X_plot[:, 1], c=sample_labels, cmap='viridis', s=20)  # Tăng kích thước điểm
@@ -250,7 +293,8 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
             plt.close('all')
             plots['scatter'].append({'k': k, 'plot': scatter_plot})
         
-        # Tạo biểu đồ Silhouette
+        # Comment: Tạo biểu đồ Silhouette.
+        # - Vẽ biểu đồ đường với trục x là các giá trị `k`, trục y là điểm Silhouette.
         logging.debug("Tạo biểu đồ Silhouette")
         plt.figure(figsize=(8, 4))  # Tăng kích thước
         plt.plot(list(k_range), silhouette_scores, marker='o')
@@ -266,7 +310,8 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
         plots['silhouette']['plot'] = base64.b64encode(buf.getvalue()).decode('utf-8')
         plt.close('all')
         
-        # Tạo biểu đồ Elbow (chỉ có ý nghĩa với KMeans và Fuzzy C-Means)
+        # Comment: Tạo biểu đồ Elbow (chỉ áp dụng cho KMeans và Fuzzy C-means).
+        # - Vẽ biểu đồ đường với trục x là các giá trị `k`, trục y là WCSS (inertia).
         if model_name in ['KMeans', 'FuzzyCMeans']:
             logging.debug("Tạo biểu đồ Elbow")
             plt.figure(figsize=(8, 4))  # Tăng kích thước
@@ -283,13 +328,16 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
             plots['elbow']['plot'] = base64.b64encode(buf.getvalue()).decode('utf-8')
             plt.close('all')
         else:
+            # Comment: Nếu không phải KMeans hoặc Fuzzy C-means, đặt giá trị mặc định.
             plots['elbow']['inertias'] = [0] * len(k_range)
             plots['elbow']['plot'] = None
         
+        # Comment: Lưu các chỉ số CVI vào `plots` và ghi log hoàn thành.
         plots['cvi'] = cvi_scores
         logging.debug("Hoàn thành generate_clustering_plots")
         
         return plots
     except Exception as e:
+        # Comment: Xử lý lỗi nếu quá trình phân cụm hoặc tạo biểu đồ thất bại.
         logging.error(f"Lỗi trong generate_clustering_plots: {str(e)}")
         return {'error': f'Lỗi khi chạy phân cụm: {str(e)}'}

@@ -1,0 +1,33 @@
+/* Style cho trang BCVI */
+.optimal-suggestion {
+    border-left: 5px solid #198754;
+    padding-left: 10px;
+    font-weight: bold;
+    color: #198754;
+}
+.cvi-highlight {
+    background-color: rgba(25, 135, 84, 0.2);
+    font-weight: bold;
+}
+
+/* Highlight Starczewski metrics with higher priority */
+th:nth-child(5), td:nth-child(5) {
+    background-color: rgba(25, 135, 84, 0.3);
+    font-weight: bold;
+    border-left: 3px solid #198754;
+}
+
+/* Wiroonsri with secondary priority */
+th:nth-child(6), td:nth-child(6) {
+    background-color: rgba(25, 135, 84, 0.2);
+    font-weight: bold;
+}
+.bcvi-badge {
+    background-color: #0dcaf0;
+    color: #212529;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    margin-left: 5px;
+    font-weight: bold;
+}

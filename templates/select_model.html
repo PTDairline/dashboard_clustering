@@ -18,6 +18,16 @@
             max-height: 200px;
             overflow-y: auto;
         }
+        .optimal-suggestion {
+            border-left: 5px solid #198754;
+            padding-left: 10px;
+            font-weight: bold;
+            color: #198754;
+        }
+        .cvi-highlight {
+            background-color: rgba(25, 135, 84, 0.2);
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -137,10 +147,36 @@
                     <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ model }}" role="tabpanel">
                         <!-- Optimal K Suggestion -->
                         {% if data.optimal_k_suggestions[model] %}
-                        <div class="alert alert-info">
-                            <strong>Gợi ý số k tối ưu:</strong> k = {{ data.optimal_k_suggestions[model].k }}<br>
-                            <strong>Lý do:</strong><br>
-                            <pre>{{ data.optimal_k_suggestions[model].reasoning }}</pre>
+                        <div class="card my-4 border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">Gợi ý số cụm tối ưu</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h4 class="d-flex align-items-center">
+                                            <span class="badge bg-success me-2">k = {{ data.optimal_k_suggestions[model].k }}</span>
+                                            <span>Số cụm tối ưu</span>
+                                        </h4>
+                                        <div class="alert alert-success">
+                                            <strong>Dựa trên Wiroonsri và Starczewski:</strong>
+                                            {% if data.optimal_k_suggestions[model].reasoning.split("\n👉 GỢI Ý:") | length > 1 %}
+                                                <p class="optimal-suggestion mt-2">{{ data.optimal_k_suggestions[model].reasoning.split("\n👉 GỢI Ý:")[1] }}</p>
+                                            {% else %}
+                                                <p>Không có gợi ý từ hai chỉ số này</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header bg-light">Chi tiết đánh giá từ các chỉ số</div>
+                                            <div class="card-body">
+                                                <pre class="small">{{ data.optimal_k_suggestions[model].reasoning.split("\n👉 GỢI Ý:")[0] }}</pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         {% endif %}
 
@@ -154,8 +190,8 @@
                                         <th>Silhouette</th>
                                         <th>Calinski-Harabasz</th>
                                         <th>Davies-Bouldin</th>
-                                        <th>Starczewski</th>
-                                        <th>Wiroonsri</th>
+                                        <th class="cvi-highlight">Starczewski</th>
+                                        <th class="cvi-highlight">Wiroonsri</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -165,8 +201,8 @@
                                         <td>{{ cvi.Silhouette|round(3) }}</td>
                                         <td>{{ cvi['Calinski-Harabasz']|round(3) }}</td>
                                         <td>{{ cvi['Davies-Bouldin']|round(3) }}</td>
-                                        <td>{{ cvi.Starczewski|round(3) }}</td>
-                                        <td>{{ cvi.Wiroonsri|round(3) }}</td>
+                                        <td class="cvi-highlight">{{ cvi.Starczewski|round(3) }}</td>
+                                        <td class="cvi-highlight">{{ cvi.Wiroonsri|round(3) }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
