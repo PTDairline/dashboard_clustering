@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<he            <li class="nav-item">
+                <a class="nav-link {% if request.path == url_for('dashkit_data_preview') %}active{% endif %}" href="{{ url_for('dashkit_data_preview') }}">
+                    <i class="fas fa-table me-2"></i> Xem dữ liệu
+                </a>
+            </li>    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">    <!-- Dashkit CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashkit/css/dashkit.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashkit/css/custom.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashkit/css/icons.css') }}">
+    
+    <!-- Original CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>    <!-- Navbar Vertical -->
+    <nav class="navbar-vertical">
+        <div class="navbar-brand">
+            <a class="text-decoration-none" href="{{ url_for('dashkit_index') }}">
+                <h4 class="text-primary mb-0">Data Dashboard</h4>
+            </a>
+        </div>
+        
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == url_for('dashkit_index') %}active{% endif %}" href="{{ url_for('dashkit_index') }}">
+                    <i class="fas fa-home me-2"></i> Trang chủ
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == url_for('dashkit_data_preview') %}active{% endif %}" href="{{ url_for('dashkit_data_preview') }}">
+                    <i class="fas fa-table me-2"></i> Xem dữ liệu
+                </a>
+            </li>            <li class="nav-item">
+                <a class="nav-link {% if request.path == url_for('process_data_dashkit') %}active{% endif %}" href="{{ url_for('process_data_dashkit') }}">
+                    <i class="fas fa-cogs me-2"></i> Xử lý dữ liệu
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == url_for('select_model') %}active{% endif %}" href="{{ url_for('select_model') }}">
+                    <i class="fas fa-brain me-2"></i> Chọn mô hình
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == url_for('bcvi') %}active{% endif %}" href="{{ url_for('bcvi') }}">
+                    <i class="fas fa-chart-bar me-2"></i> BCVI
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="dashboard-content">
+        <div class="header">
+            <h5 class="header-title">{% block header %}Dashboard{% endblock %}</h5>
+            <div>
+                <button class="btn btn-sm btn-primary" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary ms-2">
+                    <i class="fas fa-user me-1"></i> Tài khoản
+                </button>
+            </div>
+        </div>
+        
+        <div class="container-fluid mt-4">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Dashkit JS -->
+    <script src="{{ url_for('static', filename='dashkit/js/dashkit.js') }}"></script>
+    
+    <!-- Original JS -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
