@@ -184,36 +184,31 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
         # Comment: Lặp qua từng giá trị `k` trong `k_range` để chạy phân cụm và tính toán các chỉ số.
         for k in k_range:
             logging.debug(f"Chạy phân cụm với k={k}, model={model_name}")
-            
-            # Comment: Khởi tạo và chạy mô hình phân cụm dựa trên `model_name`.
-            # - KMeans: Sử dụng K-means với `n_init=1`, `max_iter=300`.
-            # - GMM: Sử dụng Gaussian Mixture Model với `n_init=1`, `max_iter=100`.
-            # - Hierarchical: Sử dụng Agglomerative Clustering.
-            # - FuzzyCMeans: Sử dụng Fuzzy C-means với tham số tối ưu.
+              # Tối ưu hóa: Sử dụng tham số được tối ưu cho tốc độ
             if model_name == 'KMeans':
-                model = KMeans(n_clusters=k, n_init=1, max_iter=300, random_state=42)
-                labels = model.fit_predict(X_array)
+                model = KMeans(n_clusters=k, n_init=3, max_iter=100, random_state=42, algorithm='lloyd')
+                labels = model.fit_predict(X_array)                
                 centroids = model.cluster_centers_
                 membership = None
             elif model_name == 'GMM':
-                model = GaussianMixture(n_components=k, n_init=1, max_iter=100, random_state=42)
+                model = GaussianMixture(n_components=k, n_init=3, max_iter=50, random_state=42, 
+                                      covariance_type='full', warm_start=True)
                 labels = model.fit_predict(X_array)
                 centroids = model.means_
                 membership = model.predict_proba(X_array)
             elif model_name == 'Hierarchical':
-                model = AgglomerativeClustering(n_clusters=k)
+                # Tối ưu hóa: Sử dụng linkage tốt nhất cho tốc độ
+                model = AgglomerativeClustering(n_clusters=k, linkage='ward')
                 labels = model.fit_predict(X_array)
+                # Tối ưu hóa: Tính centroids nhanh hơn
                 centroids = np.array([X_array[labels == i].mean(axis=0) for i in range(k)])
                 membership = None
             elif model_name == 'FuzzyCMeans':
                 try:
-                    # Comment: Chạy Fuzzy C-means với tham số tối ưu.
-                    # - `m=1.5`: Hệ số fuzziness.
-                    # - `error=0.05`: Ngưỡng lỗi để dừng.
-                    # - `maxiter=300`: Số vòng lặp tối đa.
+                    # Tối ưu hóa: Giảm số iterations và error tolerance
                     logging.info(f"Running Fuzzy C-Means with k={k}, shape of X.T: {X_array.T.shape}")
                     cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(
-                        X_array.T, k, m=1.5, error=0.05, maxiter=300, init=None, seed=42
+                        X_array.T, k, m=1.5, error=0.1, maxiter=150, init=None, seed=42
                     )
                     labels = np.argmax(u, axis=0)
                     centroids = cntr
@@ -276,53 +271,48 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
                     distances = np.linalg.norm(X_array[:, np.newaxis] - centroids, axis=2) ** 2  # Shape: (n, k)
                     inertia = np.sum((u.T ** 2) * distances)
                     inertias.append(inertia)
-            
-            # Comment: Tạo biểu đồ Scatter cho từng giá trị `k`.
-            # - Vẽ biểu đồ 2D với `X_plot` (dữ liệu đã giảm chiều), sử dụng `sample_labels` để tô màu.
+              # Tối ưu hóa: Tạo biểu đồ Scatter với kích thước và DPI tối ưu
             logging.debug(f"Tạo biểu đồ scatter cho k={k}")
-            plt.figure(figsize=(6, 3))  # Kích thước nhỏ để tăng tốc
-            plt.scatter(X_plot[:, 0], X_plot[:, 1], c=sample_labels, cmap='viridis', s=20)  # Tăng kích thước điểm
-            plt.xlabel('Feature 1')
-            plt.ylabel('Feature 2')
-            plt.title(f'{model_name} Clustering (k={k})')
+            plt.figure(figsize=(5, 3))  # Giảm kích thước để tăng tốc
+            scatter = plt.scatter(X_plot[:, 0], X_plot[:, 1], c=sample_labels, cmap='viridis', s=15, alpha=0.8)
+            plt.xlabel('Component 1')
+            plt.ylabel('Component 2')
+            plt.title(f'{model_name} (k={k})')
             plt.tight_layout()
             buf = io.BytesIO()
-            plt.savefig(buf, format='png', dpi=100)  # Tăng DPI để rõ nét
+            plt.savefig(buf, format='png', dpi=80, bbox_inches='tight')  # Giảm DPI để tăng tốc
             buf.seek(0)
             scatter_plot = base64.b64encode(buf.getvalue()).decode('utf-8')
             plt.close('all')
             plots['scatter'].append({'k': k, 'plot': scatter_plot})
-        
-        # Comment: Tạo biểu đồ Silhouette.
-        # - Vẽ biểu đồ đường với trục x là các giá trị `k`, trục y là điểm Silhouette.
+          # Tối ưu hóa: Tạo biểu đồ Silhouette với kích thước tối ưu
         logging.debug("Tạo biểu đồ Silhouette")
-        plt.figure(figsize=(8, 4))  # Tăng kích thước
-        plt.plot(list(k_range), silhouette_scores, marker='o')
+        plt.figure(figsize=(7, 4))
+        plt.plot(list(k_range), silhouette_scores, marker='o', linewidth=2, markersize=6)
         plt.xlabel('Số cụm (k)')
         plt.ylabel('Silhouette Score')
         plt.title('Silhouette Score theo số cụm')
-        plt.grid(True)
+        plt.grid(True, alpha=0.3)
         plt.tight_layout()
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=100)  # Tăng DPI
+        plt.savefig(buf, format='png', dpi=80, bbox_inches='tight')
         buf.seek(0)
         plots['silhouette']['scores'] = silhouette_scores
         plots['silhouette']['plot'] = base64.b64encode(buf.getvalue()).decode('utf-8')
         plt.close('all')
         
-        # Comment: Tạo biểu đồ Elbow (chỉ áp dụng cho KMeans và Fuzzy C-means).
-        # - Vẽ biểu đồ đường với trục x là các giá trị `k`, trục y là WCSS (inertia).
+        # Tối ưu hóa: Tạo biểu đồ Elbow với hiệu suất cao hơn
         if model_name in ['KMeans', 'FuzzyCMeans']:
             logging.debug("Tạo biểu đồ Elbow")
-            plt.figure(figsize=(8, 4))  # Tăng kích thước
-            plt.plot(list(k_range), inertias, marker='o')
+            plt.figure(figsize=(7, 4))
+            plt.plot(list(k_range), inertias, marker='o', linewidth=2, markersize=6)
             plt.xlabel('Số cụm (k)')
             plt.ylabel('WCSS')
-            plt.title('Elbow Curve')
-            plt.grid(True)
+            plt.title('Elbow Method')
+            plt.grid(True, alpha=0.3)
             plt.tight_layout()
             buf = io.BytesIO()
-            plt.savefig(buf, format='png', dpi=100)  # Tăng DPI
+            plt.savefig(buf, format='png', dpi=80, bbox_inches='tight')
             buf.seek(0)
             plots['elbow']['inertias'] = inertias
             plots['elbow']['plot'] = base64.b64encode(buf.getvalue()).decode('utf-8')

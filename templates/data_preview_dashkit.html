@@ -45,7 +45,7 @@
                 
                 {% if data.proceed_to_process %}
                 <div class="text-center mt-4">
-                    <a href="{{ url_for('process_data') }}" class="btn btn-primary">
+                    <a href="{{ url_for('process_data_dashkit') }}" class="btn btn-primary">
                         <i class="fas fa-cogs me-2"></i>Xử lý dữ liệu
                     </a>
                 </div>
@@ -205,81 +205,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Mock data for histogram - in a real app you'd fetch this from backend
-        const mockDistributions = {
-            {% for feature in data.numerical_features %}
-            "{{ feature }}": {
-                labels: ['0-10', '10-20', '20-30', '30-40', '40-50', '50+'],
-                values: [Math.random()*100, Math.random()*100, Math.random()*100, Math.random()*100, Math.random()*100, Math.random()*100]
-            },
-            {% endfor %}
-        };
-        
-        let histogramChart = null;
-        
-        function updateHistogram(feature) {
-            const ctx = document.getElementById('histogramCanvas');
-            
-            if (!ctx) {
-                const container = document.getElementById('histogramContainer');
-                container.innerHTML = '<canvas id="histogramCanvas"></canvas>';
-            }
-            
-            if (histogramChart) {
-                histogramChart.destroy();
-            }
-            
-            const distribution = mockDistributions[feature];
-            histogramChart = new Chart(
-                document.getElementById('histogramCanvas'),
-                {
-                    type: 'bar',
-                    data: {
-                        labels: distribution.labels,
-                        datasets: [{
-                            label: `Phân phối của ${feature}`,
-                            data: distribution.values,
-                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Tần số'
-                                }
-                            },
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Giá trị'
-                                }
-                            }
-                        }
-                    }
-                }
-            );
-        }
-        
-        const featureSelect = document.getElementById('featureSelect');
-        if (featureSelect) {
-            featureSelect.addEventListener('change', function() {
-                updateHistogram(this.value);
-            });
-            
-            // Initialize with first feature
-            if (featureSelect.options.length > 0) {
-                updateHistogram(featureSelect.options[0].value);
-            }
-        }
-    });
-</script>
+<script src="{{ url_for('static', filename='dashkit/js/data_preview.js') }}"></script>
 {% endblock %}

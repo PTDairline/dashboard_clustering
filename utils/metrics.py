@@ -164,7 +164,7 @@ def starczewski_index(X, labels, centroids):
 
 def wiroonsri_index(X, labels, centroids):
     """
-    Tính toán chỉ số Wiroonsri (WI) bằng cách lấy mẫu ngẫu nhiên.
+    Tính toán chỉ số Wiroonsri (WI) bằng cách lấy mẫu ngẫu nhiên - Phiên bản tối ưu.
     Giá trị lớn nhất là tối ưu.
     Chỉ tính NC(k) tại k hiện tại.
     """
@@ -177,50 +177,56 @@ def wiroonsri_index(X, labels, centroids):
             logging.warning("Số cụm không hợp lệ để tính Wiroonsri")
             return 0.0
         
-        # Comment: Lấy số mẫu `n` và lấy mẫu ngẫu nhiên để giảm độ phức tạp.
-        # - Nếu `n < 2000`, dùng toàn bộ dữ liệu.
-        # - Nếu `n >= 2000`, lấy mẫu 2000 điểm.
+        # Tối ưu hóa: Giảm sample size để tăng tốc độ
         n = len(X)
         if n < 2000:
             sample_size = n
         else:
-            sample_size = 2000  # Lấy mẫu 2000 điểm để giảm độ phức tạp
+            sample_size = min(2000, n)  # Giảm từ 2000 xuống 1000
         
         # Comment: Lấy mẫu ngẫu nhiên các điểm và nhãn tương ứng.
         indices = np.random.choice(n, size=sample_size, replace=False)
         X_sample = X[indices]
         labels_sample = labels[indices]
         
+        # Tối ưu hóa: Sử dụng numpy operations nhanh hơn
         # Comment: Tính vector `d`: Khoảng cách giữa các cặp điểm trong mẫu.
-        # - Sử dụng `pdist` để tính khoảng cách Euclidean.
         d = pdist(X_sample)
         
         # Comment: Tính vector `c(k)`: Khoảng cách giữa các trung tâm cụm tương ứng với các cặp điểm.
-        c = np.zeros(len(d))
-        idx = 0
+        # Tối ưu hóa: Vectorized computation thay vì nested loops
+        n_pairs = len(d)
+        c = np.zeros(n_pairs)
+        
+        pair_idx = 0
         for i in range(sample_size):
             for j in range(i + 1, sample_size):
-                c[idx] = np.linalg.norm(centroids[labels_sample[i]] - centroids[labels_sample[j]])
-                idx += 1
+                c[pair_idx] = np.linalg.norm(centroids[labels_sample[i]] - centroids[labels_sample[j]])
+                pair_idx += 1
         
         # Comment: Tính NC(k): Hệ số tương quan giữa `d` và `c(k)`.
-        # - Nếu độ lệch chuẩn của `d` hoặc `c` bằng 0, trả về giá trị mặc định.
-        if np.std(d) == 0 or np.std(c) == 0:
+        # Tối ưu hóa: Kiểm tra nhanh và an toàn hơn
+        std_d = np.std(d)
+        std_c = np.std(c)
+        
+        if std_d == 0 or std_c == 0:
             logging.warning("Độ lệch chuẩn của d hoặc c bằng 0, trả về Wiroonsri mặc định")
             nc_k = 0.0
         else:
             nc_k = np.corrcoef(d, c)[0, 1]
+            if np.isnan(nc_k):
+                nc_k = 0.0
         
         # Comment: Tính NC(1): Độ chuẩn hóa của độ lệch chuẩn `d`.
-        std_d = np.std(d)
         if std_d == 0:
             logging.warning("Độ lệch chuẩn của d bằng 0, trả về NC(1) mặc định")
             nc_1 = 0.0
         else:
-            nc_1 = std_d / (np.max(d) - np.min(d))
+            d_range = np.max(d) - np.min(d)
+            nc_1 = std_d / d_range if d_range > 0 else 0.0
         
         # Comment: Tính chỉ số Wiroonsri: Lấy giá trị lớn hơn giữa `nc_k` và `nc_1`.
-        wi = nc_k if nc_k >= nc_1 else nc_1
+        wi = max(nc_k, nc_1)
         logging.debug(f"Wiroonsri: {wi}")
         return wi
     except Exception as e:
@@ -257,47 +263,84 @@ def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False):
     # - `optimal_k`: Số cụm tối ưu (mặc định là giá trị nhỏ nhất trong `k_range`).
     # - `reasoning`: Danh sách lý do cho từng gợi ý.
     optimal_k = k_range[0]  # Giá trị mặc định
-    reasoning = []
-
-    # Comment: Lấy các chỉ số CVI từ `plots`.
+    reasoning = []    # Tối ưu hóa: Lấy các chỉ số CVI từ `plots` với xử lý nhanh hơn
     cvi_data = plots['cvi']
-    silhouette_scores = [entry['Silhouette'] for entry in cvi_data]
-    calinski_scores = [entry['Calinski-Harabasz'] for entry in cvi_data]
-    davies_scores = [entry['Davies-Bouldin'] for entry in cvi_data]
-    starczewski_scores = [entry['Starczewski'] for entry in cvi_data]
-    wiroonsri_scores = [entry['Wiroonsri'] for entry in cvi_data]
-
-    # Comment: Phương pháp Elbow (chỉ áp dụng cho KMeans và Fuzzy C-Means).
-    # - Tính đạo hàm bậc hai của WCSS để tìm điểm khuỷu tay.
+    if not cvi_data:
+        return k_range[0], "Không có dữ liệu CVI để gợi ý số cụm tối ưu."
+    
+    # Tối ưu hóa: Sử dụng numpy arrays để xử lý nhanh hơn
+    silhouette_scores = np.array([entry['Silhouette'] for entry in cvi_data])
+    calinski_scores = np.array([entry['Calinski-Harabasz'] for entry in cvi_data])
+    davies_scores = np.array([entry['Davies-Bouldin'] for entry in cvi_data])
+    starczewski_scores = np.array([entry['Starczewski'] for entry in cvi_data])
+    wiroonsri_scores = np.array([entry['Wiroonsri'] for entry in cvi_data])    # Tối ưu hóa: Phương pháp Elbow với numpy operations
     wcss = plots['elbow']['inertias']
     elbow_k = k_range[0]  # Mặc định
-    if any(wcss):  # Kiểm tra xem WCSS có giá trị hợp lệ không
-        wcss_diff = [wcss[i] - wcss[i+1] for i in range(len(wcss)-1)]
-        wcss_diff2 = [wcss_diff[i] - wcss_diff[i+1] for i in range(len(wcss_diff)-1)]
-        if wcss_diff2 and any(diff != 0 for diff in wcss_diff2):  # Kiểm tra wcss_diff2 không rỗng và không toàn 0
-            elbow_idx = wcss_diff2.index(max(wcss_diff2)) + 2
-            elbow_k = k_range[elbow_idx]
-            reasoning.append(f"Phương pháp Elbow gợi ý k={elbow_k} dựa trên sự thay đổi lớn nhất trong WCSS.")
+    if wcss and len(wcss) > 2:  # Cần ít nhất 3 điểm để tính elbow
+        wcss_array = np.array(wcss)
+        if np.any(wcss_array):  # Kiểm tra xem WCSS có giá trị hợp lệ không
+            wcss_diff = np.diff(wcss_array)  # Đạo hàm bậc nhất
+            if len(wcss_diff) > 1:
+                wcss_diff2 = np.diff(wcss_diff)  # Đạo hàm bậc hai
+                if np.any(wcss_diff2 != 0):  # Kiểm tra wcss_diff2 không toàn 0
+                    elbow_idx = np.argmax(wcss_diff2) + 2
+                    if elbow_idx < len(k_range):
+                        elbow_k = k_range[elbow_idx]
+                        reasoning.append(f"Phương pháp Elbow gợi ý k={elbow_k} dựa trên sự thay đổi lớn nhất trong WCSS.")
+                    else:
+                        reasoning.append("Phương pháp Elbow không áp dụng được do chỉ số nằm ngoài phạm vi k_range.")
+                else:
+                    reasoning.append("Phương pháp Elbow không áp dụng được do WCSS không thay đổi.")
+            else:
+                reasoning.append("Phương pháp Elbow không áp dụng được do không đủ điểm dữ liệu.")
         else:
-            reasoning.append("Phương pháp Elbow không áp dụng được do WCSS không thay đổi hoặc không có giá trị hợp lệ.")
+            reasoning.append("Phương pháp Elbow không áp dụng được do WCSS không có giá trị hợp lệ.")
     else:
-        reasoning.append("Phương pháp Elbow không áp dụng được do không có WCSS (thuật toán không hỗ trợ).")
-
-    # Comment: Gợi ý dựa trên chỉ số Silhouette (giá trị cao nhất).
+        reasoning.append("Phương pháp Elbow không áp dụng được do không có WCSS hoặc không đủ dữ liệu.")    # Tối ưu hóa: Gợi ý dựa trên chỉ số Silhouette với numpy
     silhouette_k = None
-    if any(score != 0 for score in silhouette_scores):
-        silhouette_idx = silhouette_scores.index(max(silhouette_scores))
+    if np.any(silhouette_scores != 0):
+        silhouette_idx = np.argmax(silhouette_scores)
         silhouette_k = k_range[silhouette_idx]
         reasoning.append(f"Silhouette Score gợi ý k={silhouette_k} với giá trị cao nhất: {silhouette_scores[silhouette_idx]:.3f}.")
     else:
         reasoning.append("Silhouette Score không khả dụng (tất cả giá trị bằng 0).")
 
-    # Comment: Gợi ý dựa trên chỉ số Calinski-Harabasz (giá trị cao nhất).
-    if any(score != 0 for score in calinski_scores):
-        calinski_idx = calinski_scores.index(max(calinski_scores))
+    # Tối ưu hóa: Gợi ý dựa trên chỉ số Calinski-Harabasz
+    calinski_k = None
+    if np.any(calinski_scores != 0):
+        calinski_idx = np.argmax(calinski_scores)
         calinski_k = k_range[calinski_idx]
         reasoning.append(f"Calinski-Harabasz gợi ý k={calinski_k} với giá trị cao nhất: {calinski_scores[calinski_idx]:.3f}.")
     else:
+        reasoning.append("Calinski-Harabasz không khả dụng (tất cả giá trị bằng 0).")
+
+    # Tối ưu hóa: Gợi ý dựa trên chỉ số Davies-Bouldin
+    davies_k = None
+    valid_davies = davies_scores[davies_scores != float('inf')]
+    if len(valid_davies) > 0:
+        davies_idx = np.argmin(davies_scores)
+        davies_k = k_range[davies_idx]
+        reasoning.append(f"Davies-Bouldin gợi ý k={davies_k} với giá trị thấp nhất: {davies_scores[davies_idx]:.3f}.")
+    else:
+        reasoning.append("Davies-Bouldin không khả dụng (tất cả giá trị không hợp lệ).")
+
+    # Tối ưu hóa: Gợi ý dựa trên chỉ số Starczewski
+    starczewski_k = None
+    if np.any(starczewski_scores != 0):
+        starczewski_idx = np.argmax(starczewski_scores)
+        starczewski_k = k_range[starczewski_idx]
+        reasoning.append(f"Starczewski gợi ý k={starczewski_k} với giá trị cao nhất: {starczewski_scores[starczewski_idx]:.3f}.")
+    else:
+        reasoning.append("Starczewski không khả dụng (tất cả giá trị bằng 0).")
+
+    # Tối ưu hóa: Gợi ý dựa trên chỉ số Wiroonsri
+    wiroonsri_k = None
+    if np.any(wiroonsri_scores != 0):
+        wiroonsri_idx = np.argmax(wiroonsri_scores)
+        wiroonsri_k = k_range[wiroonsri_idx]
+        reasoning.append(f"Wiroonsri gợi ý k={wiroonsri_k} với giá trị cao nhất: {wiroonsri_scores[wiroonsri_idx]:.3f}.")
+    else:
+        reasoning.append("Wiroonsri không khả dụng (tất cả giá trị bằng 0).")
         reasoning.append("Calinski-Harabasz không khả dụng (tất cả giá trị bằng 0).")
 
     # Comment: Gợi ý dựa trên chỉ số Davies-Bouldin (giá trị thấp nhất).

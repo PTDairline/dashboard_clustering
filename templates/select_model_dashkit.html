@@ -1,0 +1,381 @@
+{% extends "base_dashkit.html" %}
+
+{% block title %}Chọn Mô Hình | Dashboard Phân Cụm{% endblock %}
+
+{% block header %}Chọn Mô Hình Phân Cụm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .floating-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+    .collapsible-alerts {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .optimal-suggestion {
+        border-left: 5px solid #198754;
+        padding-left: 10px;
+        font-weight: bold;
+        color: #198754;
+    }
+    .cvi-highlight {
+        background-color: rgba(25, 135, 84, 0.2);
+        font-weight: bold;
+    }
+    .model-card {
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    .model-card:hover {
+        border-color: #0d6efd;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="alert-container">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <button type="button" class="btn btn-link p-0" data-bs-toggle="collapse" data-bs-target="#alertCollapse">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Xem thông báo ({{ messages|length }})
+                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div id="alertCollapse" class="collapse mt-2">
+                    <div class="collapsible-alerts">
+                        {% for message in messages %}
+                            <div class="small">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+</div>
+
+<div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3">
+        <!-- Card: Quy trình -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-tasks me-2 text-primary"></i>Quy Trình
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">1</span> Tải dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">2</span> Xem dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">3</span> Xử lý dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center active">
+                        <span class="badge rounded-pill bg-primary me-2">4</span> <strong>Chọn mô hình</strong>
+                        <i class="fas fa-arrow-right text-primary ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center text-muted">
+                        <span class="badge rounded-pill bg-secondary me-2">5</span> Phân tích BCVI
+                        {% if data.models %}
+                            <a href="{{ url_for('bcvi') }}" class="ms-auto"><i class="fas fa-arrow-right"></i></a>
+                        {% else %}
+                            <i class="fas fa-lock ms-auto"></i>
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Card: Thông tin -->
+        {% if data.models %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle me-2 text-info"></i>Kết Quả
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Số mô hình
+                        <span class="badge bg-primary rounded-pill">{{ data.models|length }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Số cụm tối đa
+                        <span class="badge bg-success rounded-pill">{{ data.k_range|max }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-9">
+        <!-- Card: Form chọn mô hình -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title">
+                    <i class="fas fa-brain me-2 text-primary"></i>Chọn Mô Hình và Số Cụm
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="modelForm">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="fas fa-cogs me-2"></i>Chọn mô hình:
+                            </label>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check model-card p-3 border rounded">
+                                        <input type="checkbox" class="form-check-input" name="models" value="KMeans" id="model_kmeans" checked>
+                                        <label class="form-check-label w-100" for="model_kmeans">
+                                            <strong>KMeans</strong>
+                                            <small class="d-block text-muted">Phân cụm dựa trên khoảng cách</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check model-card p-3 border rounded">
+                                        <input type="checkbox" class="form-check-input" name="models" value="GMM" id="model_gmm">
+                                        <label class="form-check-label w-100" for="model_gmm">
+                                            <strong>GMM</strong>
+                                            <small class="d-block text-muted">Gaussian Mixture Model</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check model-card p-3 border rounded">
+                                        <input type="checkbox" class="form-check-input" name="models" value="Hierarchical" id="model_hierarchical">
+                                        <label class="form-check-label w-100" for="model_hierarchical">
+                                            <strong>Hierarchical</strong>
+                                            <small class="d-block text-muted">Phân cụm phân cấp</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check model-card p-3 border rounded">
+                                        <input type="checkbox" class="form-check-input" name="models" value="FuzzyCMeans" id="model_fcm">
+                                        <label class="form-check-label w-100" for="model_fcm">
+                                            <strong>Fuzzy C-Means</strong>
+                                            <small class="d-block text-muted">Phân cụm mờ</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="k" class="form-label">
+                                <i class="fas fa-hashtag me-2"></i>Số cụm (k) tối đa:
+                            </label>
+                            <select class="form-select" id="k" name="k">
+                                {% for k in data.k_range %}
+                                    <option value="{{ k }}" {% if k == data.selected_k %}selected{% endif %}>{{ k }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                Mô hình sẽ chạy từ k=2 đến k={{ data.selected_k if data.selected_k else 'được chọn' }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-play me-2"></i>Chạy Mô Hình
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="progress mt-3 d-none" id="modelProgress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">
+                        Đang chạy mô hình...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card: Kết quả -->
+        {% if data.models %}
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-bar me-2 text-success"></i>Kết Quả Phân Cụm
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Tabs for Models -->
+                <ul class="nav nav-tabs" id="modelTabs" role="tablist">
+                    {% for model in data.models %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if loop.first %}active{% endif %}" id="{{ model }}-tab" data-bs-toggle="tab" data-bs-target="#{{ model }}" type="button" role="tab">
+                            {{ model }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <div class="tab-content mt-4" id="modelTabsContent">
+                    {% for model in data.models %}
+                    <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ model }}" role="tabpanel">
+                        <!-- Optimal K Suggestion -->
+                        {% if data.optimal_k_suggestions and model in data.optimal_k_suggestions %}
+                        <div class="card mb-4 border-success">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-lightbulb me-2"></i>Gợi ý số cụm tối ưu
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h4 class="d-flex align-items-center">
+                                            <span class="badge bg-success me-2">k = {{ data.optimal_k_suggestions[model].k }}</span>
+                                            <span>Số cụm tối ưu</span>
+                                        </h4>
+                                        <div class="alert alert-success">
+                                            <strong>Dựa trên Wiroonsri và Starczewski:</strong>
+                                            {% if data.optimal_k_suggestions[model].reasoning.split("\n👉 GỢI Ý:") | length > 1 %}
+                                                <p class="optimal-suggestion mt-2">{{ data.optimal_k_suggestions[model].reasoning.split("\n👉 GỢI Ý:")[1] }}</p>
+                                            {% else %}
+                                                <p>Không có gợi ý từ hai chỉ số này</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header bg-light">Chi tiết đánh giá từ các chỉ số</div>
+                                            <div class="card-body">
+                                                <pre class="small">{{ data.optimal_k_suggestions[model].reasoning.split("\n👉 GỢI Ý:")[0] }}</pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- CVI Scores Table -->
+                        <h6 class="mb-3">
+                            <i class="fas fa-table me-2"></i>Chỉ số đánh giá cụm (CVI)
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>k</th>
+                                        <th>Silhouette</th>
+                                        <th>Calinski-Harabasz</th>
+                                        <th>Davies-Bouldin</th>
+                                        <th class="cvi-highlight">Starczewski</th>
+                                        <th class="cvi-highlight">Wiroonsri</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for k, scores in data.cvi_scores[model].items() %}
+                                    <tr>
+                                        <td><strong>{{ k }}</strong></td>
+                                        <td>{{ scores.silhouette|round(3) }}</td>
+                                        <td>{{ scores.calinski_harabasz|round(3) }}</td>
+                                        <td>{{ scores.davies_bouldin|round(3) }}</td>
+                                        <td class="cvi-highlight">{{ scores.starczewski|round(3) }}</td>
+                                        <td class="cvi-highlight">{{ scores.wiroonsri|round(3) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Plots Section -->
+                        <h6 class="mt-4 mb-3">
+                            <i class="fas fa-chart-line me-2"></i>Biểu đồ đánh giá
+                        </h6>
+                        <div class="row">
+                            <!-- Elbow Plot -->
+                            {% if model in ['KMeans', 'FuzzyCMeans'] and data.plots[model].elbow.plot %}
+                            <div class="col-md-6 mb-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Elbow Curve</h6>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <img src="data:image/png;base64,{{ data.plots[model].elbow.plot }}" class="img-fluid" alt="Elbow Plot">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Scatter Plots -->
+                        <h6 class="mt-4 mb-3">
+                            <i class="fas fa-scatter-chart me-2"></i>Biểu đồ phân cụm
+                        </h6>
+                        <div class="row">
+                            {% for scatter in data.plots[model].scatter %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-header text-center">
+                                        <h6 class="mb-0">k = {{ scatter.k }}</h6>
+                                    </div>
+                                    <div class="card-body p-2">
+                                        <img src="data:image/png;base64,{{ scatter.plot }}" class="img-fluid" alt="Scatter Plot k={{ scatter.k }}">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Navigation Button -->
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('bcvi') }}" class="btn btn-success btn-lg">
+                        <i class="fas fa-arrow-right me-2"></i>Tiếp tục đến BCVI
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modelForm = document.getElementById('modelForm');
+        const modelProgress = document.getElementById('modelProgress');
+        
+        if (modelForm && modelProgress) {
+            modelForm.addEventListener('submit', function() {
+                modelProgress.classList.remove('d-none');
+            });
+        }
+
+        // Model card hover effects
+        const modelCards = document.querySelectorAll('.model-card');
+        modelCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,10 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi">
-<he            <li class="nav-item">
-                <a class="nav-link {% if request.path == url_for('dashkit_data_preview') %}active{% endif %}" href="{{ url_for('dashkit_data_preview') }}">
-                    <i class="fas fa-table me-2"></i> Xem dữ liệu
-                </a>
-            </li>    <meta charset="UTF-8">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Dashboard{% endblock %}</title>
     
@@ -15,7 +12,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">    <!-- Dashkit CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Dashkit CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='dashkit/css/dashkit.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='dashkit/css/custom.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='dashkit/css/icons.css') }}">
@@ -25,7 +24,8 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body>    <!-- Navbar Vertical -->
+<body>
+    <!-- Navbar Vertical -->
     <nav class="navbar-vertical">
         <div class="navbar-brand">
             <a class="text-decoration-none" href="{{ url_for('dashkit_index') }}">
@@ -51,6 +51,11 @@
             <li class="nav-item">
                 <a class="nav-link {% if request.path == url_for('select_model') %}active{% endif %}" href="{{ url_for('select_model') }}">
                     <i class="fas fa-brain me-2"></i> Chọn mô hình
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == url_for('clustering_metrics') %}active{% endif %}" href="{{ url_for('clustering_metrics') }}">
+                    <i class="fas fa-chart-bar me-2"></i> Chỉ số đánh giá
                 </a>
             </li>
             <li class="nav-item">

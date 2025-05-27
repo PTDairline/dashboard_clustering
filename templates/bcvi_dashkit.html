@@ -1,0 +1,282 @@
+{% extends "base_dashkit.html" %}
+
+{% block title %}BCVI Analysis | Dashboard Phân Cụm{% endblock %}
+
+{% block header %}Phân Tích BCVI (Between-Cluster Validation Index){% endblock %}
+
+{% block extra_css %}
+<style>
+    .bcvi-card {
+        transition: all 0.3s ease;
+    }
+    .bcvi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .optimal-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        z-index: 10;
+    }
+    .bcvi-table {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .alpha-input {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 10px;
+        transition: border-color 0.3s ease;
+    }
+    .alpha-input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3">
+        <!-- Card: Quy trình -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-tasks me-2 text-primary"></i>Quy Trình
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">1</span> Tải dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">2</span> Xem dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">3</span> Xử lý dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">4</span> Chọn mô hình
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center active">
+                        <span class="badge rounded-pill bg-primary me-2">5</span> <strong>Phân tích BCVI</strong>
+                        <i class="fas fa-arrow-right text-primary ms-auto"></i>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Card: Thông tin -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle me-2 text-info"></i>Thông Tin
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Số mô hình
+                        <span class="badge bg-primary rounded-pill">{{ data.models|length }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Phạm vi K
+                        <span class="badge bg-success rounded-pill">2-{{ data.selected_k }}</span>
+                    </li>
+                    {% if data.alpha %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Giá trị Alpha
+                        <span class="badge bg-warning rounded-pill">{{ data.alpha|length }}</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-9">
+        <!-- Card: Form tính BCVI -->
+        {% if not data.bcvi_results %}
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title">
+                    <i class="fas fa-calculator me-2 text-primary"></i>Tính Toán BCVI
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label for="alpha" class="form-label">
+                                <i class="fas fa-sliders-h me-2"></i>Giá trị Alpha (cách nhau bởi dấu phẩy):
+                            </label>
+                            <input type="text" class="form-control alpha-input" id="alpha" name="alpha" 
+                                   value="0.1, 0.5, 1.0" placeholder="0.1, 0.5, 1.0">
+                            <div class="form-text">
+                                Alpha điều khiển tầm quan trọng của khoảng cách giữa các cụm
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-play me-2"></i>Tính BCVI
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Card: Kết quả BCVI -->
+        {% if data.bcvi_results %}
+        <div class="card mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2 text-success"></i>Kết Quả BCVI
+                </h5>
+                <a href="{{ url_for('download_bcvi') }}" class="btn btn-success btn-sm">
+                    <i class="fas fa-download me-2"></i>Tải CSV
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Tabs cho các mô hình -->
+                <ul class="nav nav-tabs" id="bcviTabs" role="tablist">
+                    {% for model in data.models %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                id="{{ model }}-tab" data-bs-toggle="tab" 
+                                data-bs-target="#{{ model }}-bcvi" type="button" role="tab">
+                            {{ model }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <div class="tab-content mt-4" id="bcviTabsContent">
+                    {% for model in data.models %}
+                    <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                         id="{{ model }}-bcvi" role="tabpanel">
+                        
+                        {% if model in data.bcvi_results %}
+                        <!-- Gợi ý K tối ưu -->
+                        {% if model in data.optimal_k %}
+                        <div class="row mb-4">
+                            {% for alpha, k in data.optimal_k[model].items() %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card bcvi-card border-success">
+                                    <div class="card-header bg-success text-white text-center">
+                                        <h6 class="mb-0">Alpha = {{ alpha }}</h6>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <h4 class="text-success">k = {{ k }}</h4>
+                                        <small class="text-muted">Số cụm tối ưu</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Bảng kết quả chi tiết -->
+                        <h6 class="mb-3">
+                            <i class="fas fa-table me-2"></i>Chi Tiết BCVI
+                        </h6>
+                        <div class="bcvi-table">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>K</th>
+                                        {% for alpha in data.alpha %}
+                                        <th>Alpha = {{ alpha }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set k_values = data.bcvi_results[model] | map(attribute='k') | unique | list | sort %}
+                                    {% for k in k_values %}
+                                    <tr>
+                                        <td><strong>{{ k }}</strong></td>
+                                        {% for alpha in data.alpha %}
+                                        {% set bcvi_value = data.bcvi_results[model] | selectattr('k', 'equalto', k) | selectattr('alpha', 'equalto', alpha) | map(attribute='bcvi') | first %}
+                                        <td>
+                                            {% if bcvi_value %}
+                                                {{ "%.4f"|format(bcvi_value) }}
+                                                {% if model in data.optimal_k and data.optimal_k[model][alpha|string] == k %}
+                                                    <span class="badge bg-success ms-1">Tối ưu</span>
+                                                {% endif %}
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Không có kết quả BCVI cho mô hình {{ model }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Card: Tính lại -->
+        <div class="card">
+            <div class="card-body text-center">
+                <h6>Muốn thay đổi giá trị Alpha?</h6>
+                <form method="post" class="d-inline">
+                    <div class="input-group d-inline-flex w-auto">
+                        <input type="text" class="form-control" name="alpha" 
+                               value="{{ ', '.join(data.alpha | map('string')) }}" 
+                               style="max-width: 200px;">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fas fa-redo me-2"></i>Tính Lại
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add hover effects to BCVI cards
+        const bcviCards = document.querySelectorAll('.bcvi-card');
+        bcviCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+                this.style.boxShadow = '0 8px 20px rgba(0,0,0,0.15)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+            });
+        });
+
+        // Smooth scrolling for long tables
+        const bcviTables = document.querySelectorAll('.bcvi-table');
+        bcviTables.forEach(table => {
+            table.style.scrollBehavior = 'smooth';
+        });
+    });
+</script>
+{% endblock %}
