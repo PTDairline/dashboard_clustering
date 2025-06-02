@@ -130,14 +130,14 @@ def select_model():
         if selected_k < 2:
             logging.error(f"selected_k={selected_k} nhỏ hơn 2")
             flash("Số cụm tối đa (k) phải lớn hơn hoặc bằng 2 để áp dụng phương pháp khuỷu tay.")
-            return render_template('select_model.html', data=data)
+            return render_template('select_model_dashkit.html', data=data)
         logging.debug(f"Selected_k: {selected_k}, Models: {models}")
         
         # Comment: Kiểm tra xem có mô hình nào được chọn không.
         if not models:
             logging.error("Không có mô hình nào được chọn")
             flash("Vui lòng chọn ít nhất một mô hình.")
-            return render_template('select_model.html', data=data)
+            return render_template('select_model_dashkit.html', data=data)
         
         # Comment: Kiểm tra dữ liệu đầu vào trước khi chạy phân cụm.
         # - Lọc các cột số, kiểm tra số cột tối thiểu (>= 2), giá trị NaN, và giá trị vô cực.
@@ -146,17 +146,17 @@ def select_model():
         if X_numeric.empty or len(X_numeric.columns) < 2:
             logging.error("Dữ liệu không đủ cột số")
             flash("Dữ liệu không chứa đủ cột số (cần ít nhất 2 cột số). Vui lòng kiểm tra và xử lý lại dữ liệu.")
-            return render_template('select_model.html', data=data)
+            return render_template('select_model_dashkit.html', data=data)
         
         if X_numeric.isna().any().any():
             logging.error("Dữ liệu chứa giá trị NaN")
             flash("Dữ liệu chứa giá trị NaN. Vui lòng xử lý dữ liệu trước khi chạy phân cụm.")
-            return render_template('select_model.html', data=data)
+            return render_template('select_model_dashkit.html', data=data)
         
         if np.isinf(X_numeric.values).any():
             logging.error("Dữ liệu chứa giá trị vô cực")
             flash("Dữ liệu chứa giá trị vô cực (inf). Vui lòng xử lý dữ liệu trước khi chạy phân cụm.")
-            return render_template('select_model.html', data=data)
+            return render_template('select_model_dashkit.html', data=data)
         
         # Comment: Cảnh báo nếu số chiều của dữ liệu lớn (>20), có thể làm chậm phân cụm.
         if X_numeric.shape[1] > 20:
@@ -232,8 +232,8 @@ def select_model():
         
         # Comment: Trả về giao diện `select_model.html` với kết quả phân cụm.
         logging.debug("Hoàn thành xử lý POST, trả về giao diện")
-        return render_template('select_model.html', data=data)
+        return render_template('select_model_dashkit.html', data=data)
     
     # Comment: Trả về giao diện mặc định nếu không có yêu cầu POST.
     logging.debug("Trả về giao diện mặc định (GET)")
-    return render_template('select_model.html', data=data)
+    return render_template('select_model_dashkit.html', data=data)

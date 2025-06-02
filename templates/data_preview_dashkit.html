@@ -1,0 +1,209 @@
+{% extends "base_dashkit.html" %}
+
+{% block title %}Tổng Quan Dữ Liệu | Dashboard Phân Cụm{% endblock %}
+
+{% block header %}Tổng Quan Dữ Liệu{% endblock %}
+
+{% block content %}
+<div class="alert-container">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
+
+<div class="row">
+    <!-- Thông tin dữ liệu -->
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle me-2 text-info"></i>Thông Tin Dữ Liệu
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Số dòng
+                        <span class="badge bg-primary rounded-pill">{{ data.num_rows }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Số cột
+                        <span class="badge bg-primary rounded-pill">{{ data.num_features }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Giá trị thiếu
+                        <span class="badge bg-warning rounded-pill">{{ data.missing_values }}</span>
+                    </li>
+                </ul>
+                
+                {% if data.proceed_to_process %}
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('process_data_dashkit') }}" class="btn btn-primary">
+                        <i class="fas fa-cogs me-2"></i>Xử lý dữ liệu
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-pie me-2 text-warning"></i>Loại Dữ Liệu
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Số học
+                        <span class="badge bg-info rounded-pill">{{ data.numerical_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Danh mục
+                        <span class="badge bg-success rounded-pill">{{ data.categorical_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Ngày tháng
+                        <span class="badge bg-primary rounded-pill">{{ data.datetime_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Khác
+                        <span class="badge bg-secondary rounded-pill">{{ data.other_count }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dữ liệu và thống kê -->
+    <div class="col-md-9">
+        {% if data.preview_data %}
+        <!-- Data Preview -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title">
+                        <i class="fas fa-table me-2 text-primary"></i>Dữ Liệu (5 dòng đầu)
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#previewCollapse">
+                        <i class="fas fa-eye"></i> Hiện/Ẩn
+                    </button>
+                </div>
+            </div>
+            <div class="collapse show" id="previewCollapse">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    {% for col in data.features %}
+                                        <th>{{ col }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in data.preview_data %}
+                                    <tr>
+                                        {% for col in data.features %}
+                                            <td>{{ row[col] }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Data Statistics -->
+        {% if data.data_stats %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title">
+                        <i class="fas fa-calculator me-2 text-success"></i>Thống Kê Dữ Liệu
+                    </h5>
+                    <button class="btn btn-sm btn-outline-success" type="button" data-bs-toggle="collapse" data-bs-target="#statsCollapse">
+                        <i class="fas fa-eye"></i> Hiện/Ẩn
+                    </button>
+                </div>
+            </div>
+            <div class="collapse show" id="statsCollapse">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Chỉ số</th>
+                                    {% for col in data.features %}
+                                        {% if col in data.data_stats %}
+                                            <th>{{ col }}</th>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in ['count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max'] %}
+                                    <tr>
+                                        <td><strong>{{ stat }}</strong></td>
+                                        {% for col in data.features %}
+                                            {% if col in data.data_stats %}
+                                                <td>{{ data.data_stats[col][stat]|round(2, 'floor') if data.data_stats[col][stat] is float else data.data_stats[col][stat] }}</td>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Biểu đồ phân phối dữ liệu -->
+        {% if data.numerical_features and data.numerical_features|length > 0 %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-bar me-2 text-danger"></i>Biểu Đồ Phân Phối
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="form-group">
+                            <label for="featureSelect">Chọn biến để xem phân phối:</label>
+                            <select class="form-control" id="featureSelect">
+                                {% for feature in data.numerical_features %}
+                                <option value="{{ feature }}">{{ feature }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div id="histogramContainer" style="height: 300px;">
+                            <!-- Biểu đồ histogram sẽ được render bằng JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='dashkit/js/data_preview.js') }}"></script>
+{% endblock %}

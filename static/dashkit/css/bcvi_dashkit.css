@@ -1,0 +1,263 @@
+/* 
+ * BCVI Dashboard CSS
+ * Custom styles for BCVI Dashboard
+ */
+
+.bcvi-card {
+    transition: all 0.3s ease;
+    border: none;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.bcvi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+.optimal-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    z-index: 10;
+}
+.bcvi-table {
+    max-height: 400px;
+    overflow-y: auto;
+    border-radius: 8px;
+}
+.alpha-grid input {
+    transition: all 0.3s;
+    border-radius: 6px;
+}
+.alpha-grid input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.25);
+    background-color: #f8f9fa;
+    transform: scale(1.02);
+}
+.alpha-grid td {
+    padding: 12px;
+    vertical-align: middle;
+}
+.alpha-grid th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 15px;
+    border-bottom: 2px solid #dee2e6;
+}
+.alpha-grid {
+    margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.formula-container {
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 0.95em;
+    border-left: 4px solid #0d6efd;
+}
+.priority-indicator {
+    transition: all 0.3s ease;
+    font-size: 0.75em;
+    font-weight: 600;
+}
+.bg-gradient {
+    background: linear-gradient(135deg, #198754 0%, #20c997 100%) !important;
+}
+.model-tab-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.cvi-pill-tabs .nav-link {
+    border-radius: 20px;
+    margin-right: 8px;
+    transition: all 0.3s ease;
+}
+.cvi-pill-tabs .nav-link.active {
+    background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+}
+.optimal-k-card {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+.optimal-k-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+.results-table {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.results-table th {
+    background: linear-gradient(135deg, #495057 0%, #6c757d 100%);
+    color: white;
+    font-weight: 600;
+    text-align: center;
+    padding: 12px;
+}
+.results-table td {
+    text-align: center;
+    padding: 10px;
+    vertical-align: middle;
+}
+.suggestion-card {
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+}
+
+/* Enhanced styles for the BCVI summary table */
+.bcvi-summary-table {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    border-radius: 10px;
+    overflow: hidden;
+    table-layout: fixed;
+    width: 100% !important;
+    max-width: 100%;
+    margin-bottom: 1rem;
+}
+
+.bcvi-summary-table th {
+    font-weight: 400;
+}
+
+.bcvi-summary-table td {
+    padding: 10px;
+    transition: all 0.2s;
+    word-wrap: break-word;
+}
+
+.bcvi-summary-table tr:hover td {
+    background-color: #f0f7ff !important;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    margin-bottom: 1rem;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #05445E 0%, #189AB4 100%);
+}
+
+.optimal-bcvi {
+    font-weight: bold;
+    color: #198754;
+    animation: pulse-highlight 2s infinite;
+}
+
+@keyframes pulse-highlight {
+    0% { background-color: transparent; }
+    50% { background-color: rgba(25, 135, 84, 0.1); }
+    100% { background-color: transparent; }
+}
+
+/* Style cho bảng tổng hợp BCVI thu gọn */
+.bcvi-summary-compact {
+    font-size: 0.85rem !important;
+    table-layout: fixed;
+    width: 100% !important;
+    margin: 0;
+    border-collapse: collapse;
+}
+
+.bcvi-summary-compact th,
+.bcvi-summary-compact td {
+    padding: 0.4rem 0.3rem !important;
+    vertical-align: middle;
+    border: 1px solid #dee2e6 !important;
+    text-align: center !important;
+}
+
+.bcvi-summary-compact .k-col {
+    width: 50px !important;
+    text-align: center !important;
+    font-weight: bold;
+    background-color: #f8f9fa;
+}
+
+.bcvi-summary-compact .bcvi-val {
+    font-weight: 600;
+    color: #0d6efd;
+    font-size: 0.9rem;
+}
+
+.bcvi-summary-compact .optimal-bcvi {
+    background-color: #d1e7dd !important;
+    color: #198754 !important;
+    position: relative;
+    font-weight: bold;
+}
+
+.bcvi-summary-compact .optimal-icon {
+    font-size: 0.7rem;
+    position: absolute;
+    top: 2px;
+    right: 2px;
+}
+
+.bcvi-summary-compact .bcvi-header {
+    background-color: #006d77 !important;
+    color: white !important;
+    padding: 0.5rem !important;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-align: center !important;
+}
+
+.bcvi-summary-compact .bcvi-header-row th {
+    border-bottom: 2px solid #004d57 !important;
+}
+
+.bcvi-summary-compact .table-row-even {
+    background-color: #f8f9fa !important;
+}
+
+.bcvi-summary-compact .table-row-even:hover {
+    background-color: #e9ecef !important;
+}
+
+.bcvi-summary-compact tr:hover td:not(.optimal-bcvi) {
+    background-color: #f0f7ff !important;
+}
+
+.bcvi-legend {
+    background-color: #f8f9fa;
+    padding: 0.5rem 0.8rem;
+    border-radius: 0.3rem;
+    font-size: 0.85rem;
+    margin-top: 0.8rem;
+    border: 1px solid #dee2e6;
+}
+
+.bcvi-legend span {
+    margin-right: 1.2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* Làm responsive cho bảng */
+@media (max-width: 992px) {
+    .bcvi-summary-compact {
+        font-size: 0.75rem !important;
+    }
+    
+    .bcvi-summary-compact th,
+    .bcvi-summary-compact td {
+        padding: 0.2rem !important;
+    }
+    
+    .bcvi-summary-compact .bcvi-header {
+        font-size: 0.7rem;
+    }
+}

@@ -1,0 +1,669 @@
+{% extends "base_dashkit.html" %}
+
+{% block title %}BCVI Analysis | Dashboard Phân Cụm{% endblock %}
+
+{% block header %}Phân Tích BCVI (Between-Cluster Validation Index){% endblock %}
+
+{% block extra_css %}
+<style>
+    .bcvi-card {
+        transition: all 0.3s ease;
+        border: none;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .bcvi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    .optimal-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        z-index: 10;
+    }
+    .bcvi-table {
+        max-height: 400px;
+        overflow-y: auto;
+        border-radius: 8px;
+    }
+    .alpha-grid input {
+        transition: all 0.3s;
+        border-radius: 6px;
+    }
+    .alpha-grid input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.25);
+        background-color: #f8f9fa;
+        transform: scale(1.02);
+    }
+    .alpha-grid td {
+        padding: 12px;
+        vertical-align: middle;
+    }
+    .alpha-grid th {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 15px;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .alpha-grid {
+        margin-bottom: 20px;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .formula-container {
+        font-family: 'JetBrains Mono', 'Consolas', monospace;
+        font-size: 0.95em;
+        border-left: 4px solid #0d6efd;
+    }
+    .priority-indicator {
+        transition: all 0.3s ease;
+        font-size: 0.75em;
+        font-weight: 600;
+    }
+    .bg-gradient {
+        background: linear-gradient(135deg, #198754 0%, #20c997 100%) !important;
+    }
+    .model-tab-container {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .cvi-pill-tabs .nav-link {
+        border-radius: 20px;
+        margin-right: 8px;
+        transition: all 0.3s ease;
+    }
+    .cvi-pill-tabs .nav-link.active {
+        background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+    }
+    .optimal-k-card {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border: none;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    .optimal-k-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+    .results-table {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .results-table th {
+        background: linear-gradient(135deg, #495057 0%, #6c757d 100%);
+        color: white;
+        font-weight: 600;
+        text-align: center;
+        padding: 12px;
+    }
+    .results-table td {
+        text-align: center;
+        padding: 10px;
+        vertical-align: middle;
+    }
+    .suggestion-card {
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3">
+        <!-- Card: Quy trình -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-tasks me-2 text-primary"></i>Quy Trình
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">1</span> Tải dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">2</span> Xem dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">3</span> Xử lý dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">4</span> Chọn mô hình
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center active">
+                        <span class="badge rounded-pill bg-primary me-2">5</span> <strong>Phân tích BCVI</strong>
+                        <i class="fas fa-arrow-right text-primary ms-auto"></i>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Card: Thông tin -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle me-2 text-info"></i>Thông Tin
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Số mô hình
+                        <span class="badge bg-primary rounded-pill">{{ data.models|length }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Phạm vi K
+                        <span class="badge bg-success rounded-pill">2-{{ data.selected_k }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Tính năng
+                        <span class="badge bg-info rounded-pill">Alpha riêng cho từng K</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-9">
+        <!-- Card: Form tính BCVI -->
+        {% if not data.bcvi_results %}
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title">
+                    <i class="fas fa-calculator me-2 text-primary"></i>Cấu hình và Tính toán BCVI
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="bcviForm">
+                    <!-- Thông tin về BCVI và Alpha -->
+                    <div class="row mb-4">
+                        <div class="col-lg-8">
+                            <div class="alert alert-primary border-0 shadow-sm">
+                                <div class="d-flex align-items-start">
+                                    <i class="fas fa-info-circle me-3 mt-1 text-primary"></i>
+                                    <div>
+                                        <h6 class="alert-heading mb-2">Về BCVI (Between-Cluster Validation Index)</h6>
+                                        <p class="mb-2">BCVI sử dụng phân phối <strong>Dirichlet tiên nghiệm</strong> để đánh giá độ tốt của phân cụm:</p>
+                                        <div class="formula-container bg-light p-2 rounded mb-2">
+                                            <code>BCVI(k) = (α_k + n × r_k) / (α_0 + n)</code>
+                                        </div>
+                                        <ul class="mb-0 small">
+                                            <li><strong>α_k</strong>: Tham số tiên nghiệm cho K cụm (α_k càng lớn → ưu tiên K đó)</li>
+                                            <li><strong>r_k</strong>: Tỷ lệ chuẩn hóa của CVI cho K cụm</li>
+                                            <li><strong>α_0</strong>: Tổng tất cả α_k</li>
+                                            <li><strong>n</strong>: Tham số điều chỉnh (=10)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Hướng dẫn Alpha</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-2">
+                                        <span class="badge bg-info">α = 0.1-0.5</span>
+                                        <small class="d-block text-muted">Ít ưu tiên K này</small>
+                                    </div>
+                                    <div class="mb-2">
+                                        <span class="badge bg-primary">α = 1.0</span>
+                                        <small class="d-block text-muted">Mức ưu tiên trung bình</small>
+                                    </div>
+                                    <div class="mb-2">
+                                        <span class="badge bg-warning">α = 2.0-5.0</span>
+                                        <small class="d-block text-muted">Ưu tiên cao</small>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-danger">α > 5.0</span>
+                                        <small class="d-block text-muted">Ưu tiên rất cao</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bảng nhập Alpha -->
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-sliders-h me-2"></i>Cấu hình tham số Alpha cho từng K
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered alpha-grid">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="text-center" style="width: 15%;">Số cụm (K)</th>
+                                                    <th class="text-center" style="width: 25%;">Alpha (α_k)</th>
+                                                    <th class="text-center" style="width: 60%;">Mô tả & Ảnh hưởng</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for k in range(2, data.selected_k + 1) %}
+                                                <tr>
+                                                    <td class="text-center align-middle">
+                                                        <div class="fw-bold fs-5 text-primary">{{ k }}</div>
+                                                        <small class="text-muted">cụm</small>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <div class="input-group">
+                                                            <span class="input-group-text">α</span>
+                                                            <input type="number" 
+                                                                class="form-control text-center fw-bold" 
+                                                                name="alpha_{{ k }}" 
+                                                                value="{{ data.alpha_values[k] if data.alpha_values and k in data.alpha_values else 0.5 }}"
+                                                                step="0.1" 
+                                                                min="0.1" 
+                                                                max="10"
+                                                                data-k="{{ k }}">
+                                                        </div>
+                                                    </td>
+                                                    <td class="small">
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <i class="fas fa-arrow-right text-primary me-2"></i>
+                                                            <span class="fw-semibold">Độ ưu tiên:</span>
+                                                            <span class="priority-indicator ms-2 badge bg-secondary" data-k="{{ k }}">Trung bình</span>
+                                                        </div>
+                                                        <div class="text-muted">
+                                                            Alpha càng lớn → BCVI({{ k }}) có trọng số cao hơn trong công thức Bayesian
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <!-- Tính năng mới: Alpha presets -->
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-magic me-2"></i>Cấu hình nhanh
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setAlphaPreset('uniform')">
+                                            <i class="fas fa-equals me-2"></i>Đồng đều (0.5)
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="setAlphaPreset('ascending')">
+                                            <i class="fas fa-chart-line me-2"></i>Tăng dần (0.5 → 2.0)
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning btn-sm" onclick="setAlphaPreset('descending')">
+                                            <i class="fas fa-chart-line-down me-2"></i>Giảm dần (2.0 → 0.5)
+                                        </button>
+                                        <button type="button" class="btn btn-outline-success btn-sm" onclick="setAlphaPreset('peak')">
+                                            <i class="fas fa-mountain me-2"></i>Đỉnh giữa
+                                        </button>
+                                    </div>
+                                    
+                                    <hr>
+                                    
+                                    <div class="mb-2">
+                                        <label class="form-label small">Tự động từ gợi ý:</label>
+                                        {% if data.optimal_k_suggestions %}
+                                            {% for model, suggestion in data.optimal_k_suggestions.items() %}
+                                            <button type="button" class="btn btn-outline-info btn-sm w-100 mb-1" 
+                                                    onclick="setAlphaForOptimalK({{ suggestion.k }})">
+                                                <i class="fas fa-brain me-1"></i>Tối ưu cho {{ model }} (K={{ suggestion.k }})
+                                            </button>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Hiển thị tổng Alpha -->
+                            <div class="card border-secondary mt-3">
+                                <div class="card-body text-center">
+                                    <div class="text-muted small">Tổng α_0</div>
+                                    <div class="fs-4 fw-bold text-primary" id="alphaSum">{{ (data.alpha_values.values() | sum) if data.alpha_values else (data.selected_k - 1) * 0.5 }}</div>
+                                    <small class="text-muted">Ảnh hưởng đến mẫu số BCVI</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-play me-2"></i>Tính toán BCVI với Alpha đã cấu hình
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Card: Kết quả BCVI -->
+        {% if data.bcvi_results %}
+        <div class="card mb-4">
+            <div class="card-header bg-gradient bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Kết Quả Phân Tích BCVI
+                </h5>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-light text-dark">{{ data.models|length }} mô hình</span>
+                    <a href="{{ url_for('download_bcvi_dashkit') }}" class="btn btn-light btn-sm">
+                        <i class="fas fa-download me-2"></i>Tải CSV
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Tabs cho các mô hình -->
+                <ul class="nav nav-tabs" id="bcviTabs" role="tablist">
+                    {% for model in data.models %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                id="{{ model }}-tab" data-bs-toggle="tab" 
+                                data-bs-target="#{{ model }}-bcvi" type="button" role="tab">
+                            {{ model }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <div class="tab-content mt-4" id="bcviTabsContent">
+                    {% for model in data.models %}
+                    <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                         id="{{ model }}-bcvi" role="tabpanel">
+                        {% if model in data.bcvi_results %}
+                        <!-- Gợi ý K tối ưu từ Wiroonsri và Starczewski cho BCVI -->
+                        {% if model in data.bcvi_suggestions %}
+                        <div class="card mb-4 suggestion-card">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-brain me-2"></i>Gợi ý BCVI từ Wiroonsri và Starczewski
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h4 class="d-flex align-items-center">
+                                            <span class="badge bg-primary me-2">k = {{ data.bcvi_suggestions[model].k }}</span>
+                                            <span>Số cụm được khuyến nghị</span>
+                                        </h4>
+                                        <div class="alert alert-info">
+                                            <strong>Dựa trên chỉ số Wiroonsri và Starczewski:</strong>
+                                            <p class="mt-2">{{ data.bcvi_suggestions[model].reasoning }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header bg-light">Chi tiết phân tích</div>
+                                            <div class="card-body">
+                                                <small class="text-muted">
+                                                    Phương pháp: {{ data.bcvi_suggestions[model].method }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Gợi ý K tối ưu từ BCVI calculations -->
+                        {% if model in data.optimal_k %}
+                        <div class="row mb-4">
+                            {% for cvi_type, k_optimal in data.optimal_k[model].items() %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card optimal-k-card border-success">
+                                    <div class="card-header bg-success text-white text-center">
+                                        <h6 class="mb-0">{{ cvi_type|upper }}</h6>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <h4 class="text-success">k = {{ k_optimal }}</h4>
+                                        <small class="text-muted">Số cụm tối ưu theo BCVI</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Bảng kết quả chi tiết -->
+                        <h6 class="mb-3">
+                            <i class="fas fa-table me-2"></i>Chi Tiết BCVI
+                        </h6>
+                        
+                        <!-- Tabs cho các loại CVI -->
+                        <ul class="nav nav-pills mb-3 cvi-pill-tabs" id="{{ model }}-cvi-tabs" role="tablist">
+                            {% for cvi_type in data.bcvi_results[model].keys() %}
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                        id="{{ model }}-{{ cvi_type }}-tab" 
+                                        data-bs-toggle="pill" 
+                                        data-bs-target="#{{ model }}-{{ cvi_type }}-panel" 
+                                        type="button" role="tab">
+                                    {{ cvi_type|upper }}
+                                </button>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        
+                        <!-- Tab content cho từng loại CVI -->
+                        <div class="tab-content" id="{{ model }}-cvi-tab-content">
+                            {% for cvi_type, results in data.bcvi_results[model].items() %}
+                            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                                 id="{{ model }}-{{ cvi_type }}-panel" role="tabpanel">
+                                <div class="bcvi-table">
+                                    <table class="table table-striped table-hover results-table">
+                                        <thead class="table-dark sticky-top">
+                                            <tr>
+                                                <th>K</th>
+                                                <th>Alpha (α_k)</th>
+                                                <th>CVI gốc</th>
+                                                <th>BCVI</th>
+                                                <th>Trạng thái</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for result in results %}
+                                            <tr>
+                                                <td><strong>{{ result.k }}</strong></td>
+                                                <td>{{ result.alpha }}</td>
+                                                <td>{{ "%.4f"|format(result.cvi) }}</td>
+                                                <td class="fw-bold text-primary">{{ "%.4f"|format(result.bcvi) }}</td>
+                                                <td>
+                                                    {% if model in data.optimal_k and data.optimal_k[model][cvi_type] == result.k %}
+                                                        <span class="badge bg-success">Tối ưu</span>
+                                                    {% else %}
+                                                        <span class="badge bg-light text-dark">-</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Không có kết quả BCVI cho mô hình {{ model }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Card: Tính lại -->
+        <div class="card">
+            <div class="card-body text-center">
+                <h6>Muốn điều chỉnh giá trị Alpha?</h6>
+                <a href="{{ url_for('bcvi') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-redo me-2"></i>Nhập lại Alpha và tính toán lại
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Hiệu ứng hover cho BCVI cards
+        const bcviCards = document.querySelectorAll('.bcvi-card');
+        bcviCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+                this.style.boxShadow = '0 8px 20px rgba(0,0,0,0.15)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+            });
+        });
+
+        // Cuộn mượt cho tables dài
+        const bcviTables = document.querySelectorAll('.bcvi-table');
+        bcviTables.forEach(table => {
+            table.style.scrollBehavior = 'smooth';
+        });
+        
+        // Xử lý thay đổi Alpha input
+        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
+            input.addEventListener('input', function() {
+                updateAlphaIndicators();
+                updateAlphaSum();
+            });
+            
+            input.addEventListener('focus', function() {
+                this.closest('tr').style.backgroundColor = '#f8f9fa';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.closest('tr').style.backgroundColor = '';
+            });
+        });
+        
+        // Khởi tạo indicators
+        updateAlphaIndicators();
+        updateAlphaSum();
+    });
+    
+    // Cập nhật các chỉ báo độ ưu tiên
+    function updateAlphaIndicators() {
+        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
+            const value = parseFloat(input.value) || 0;
+            const k = input.getAttribute('data-k');
+            const indicator = document.querySelector(`.priority-indicator[data-k="${k}"]`);
+            
+            if (indicator) {
+                let text = '';
+                let className = 'badge ';
+                
+                if (value < 0.5) {
+                    text = 'Thấp';
+                    className += 'bg-info';
+                } else if (value <= 1.0) {
+                    text = 'Trung bình';
+                    className += 'bg-secondary';
+                } else if (value <= 2.0) {
+                    text = 'Cao';
+                    className += 'bg-warning';
+                } else {
+                    text = 'Rất cao';
+                    className += 'bg-danger';
+                }
+                
+                indicator.textContent = text;
+                indicator.className = className;
+            }
+        });
+    }
+    
+    // Cập nhật tổng Alpha
+    function updateAlphaSum() {
+        let sum = 0;
+        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
+            sum += parseFloat(input.value) || 0;
+        });
+        
+        const sumElement = document.getElementById('alphaSum');
+        if (sumElement) {
+            sumElement.textContent = sum.toFixed(2);
+        }
+    }
+    
+    // Thiết lập preset alpha
+    function setAlphaPreset(preset) {
+        const inputs = document.querySelectorAll('input[name^="alpha_"]');
+        const count = inputs.length;
+        
+        inputs.forEach((input, index) => {
+            let value = 0.5;
+            
+            switch(preset) {
+                case 'uniform':
+                    value = 0.5;
+                    break;
+                case 'ascending':
+                    value = 0.5 + (index * 1.5 / (count - 1));
+                    break;
+                case 'descending':
+                    value = 2.0 - (index * 1.5 / (count - 1));
+                    break;
+                case 'peak':
+                    const mid = Math.floor(count / 2);
+                    const distance = Math.abs(index - mid);
+                    value = 2.0 - (distance * 0.3);
+                    break;
+            }
+            
+            input.value = value.toFixed(1);
+        });
+        
+        updateAlphaIndicators();
+        updateAlphaSum();
+    }
+    
+    // Thiết lập alpha tối ưu cho k cụ thể
+    function setAlphaForOptimalK(optimalK) {
+        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
+            const k = parseInt(input.getAttribute('data-k'));
+            
+            if (k === optimalK) {
+                input.value = '2.0';  // Ưu tiên cao cho k tối ưu
+            } else {
+                input.value = '0.5';  // Ưu tiên thấp cho các k khác
+            }
+        });
+        
+        updateAlphaIndicators();
+        updateAlphaSum();
+    }
+</script>
+{% endblock %}

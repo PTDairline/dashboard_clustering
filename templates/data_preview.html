@@ -14,16 +14,13 @@
             <a class="navbar-brand" href="/">Dashboard Phân cụm</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
+            </button>            <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">Tải dữ liệu</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('data_preview') }}">Tổng quan dữ liệu</a>
-                    </li>
-                    {% if data.proceed_to_process %}
+                        <a class="nav-link" href="{{ url_for('classic_index') }}">Tải dữ liệu</a>
+                    </li>                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('classic_data_preview') }}">Tổng quan dữ liệu</a>
+                    </li>{% if data.proceed_to_process %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('process_data') }}">Xử lý dữ liệu</a>
                         </li>

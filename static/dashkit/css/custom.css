@@ -1,0 +1,194 @@
+/* Custom styles cho Dashkit */
+
+/* Colors */
+:root {
+  --custom-primary: #2C7BE5;
+  --custom-secondary: #6E84A3;
+  --custom-success: #00D97E;
+  --custom-info: #39AFD1;
+  --custom-warning: #F6C343;
+  --custom-danger: #E63757;
+  --custom-light: #F9FBFD;
+  --custom-dark: #12263F;
+  --custom-body-bg: #F5F8FB;
+}
+
+/* Custom styling cho sidebar được thu gọn */
+body.sidebar-collapsed .navbar-vertical {
+  width: 70px;
+  overflow: visible;
+}
+
+body.sidebar-collapsed .navbar-vertical .navbar-brand {
+  padding: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+body.sidebar-collapsed .navbar-vertical .navbar-brand h4 {
+  display: none;
+}
+
+body.sidebar-collapsed .navbar-vertical .nav-link span {
+  display: none;
+}
+
+body.sidebar-collapsed .navbar-vertical .navbar-nav .nav-link {
+  text-align: center;
+  padding: 0.75rem;
+}
+
+body.sidebar-collapsed .dashboard-content {
+  margin-left: 70px;
+}
+
+/* Card hover effects */
+.card {
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 1.5rem rgba(22, 28, 45, 0.1);
+}
+
+/* Custom form styling */
+.form-control:focus {
+  border-color: var(--custom-primary);
+  box-shadow: 0 0 0 0.2rem rgba(44, 123, 229, 0.25);
+}
+
+.btn-primary {
+  background-color: var(--custom-primary);
+  border-color: var(--custom-primary);
+}
+
+.btn-primary:hover {
+  background-color: #1a68d1;
+  border-color: #1862c6;
+}
+
+/* Badge styling */
+.badge {
+  font-weight: 500;
+  padding: 0.5em 0.75em;
+}
+
+/* Table styling */
+.table th {
+  font-weight: 600;
+  color: var(--custom-secondary);
+  border-top: none;
+  font-size: 0.8125rem;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: rgba(249, 251, 253, 0.7);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Alert styling */
+.alert {
+  border: none;
+  border-radius: 0.5rem;
+}
+
+.alert-danger {
+  color: #fff;
+  background-color: var(--custom-danger);
+}
+
+/* Progress bar */
+.progress {
+  height: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+/* Feature badges */
+.feature-badge {
+  display: inline-block;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  background-color: rgba(57, 175, 209, 0.1);
+  color: var(--custom-info);
+  border: 1px solid rgba(57, 175, 209, 0.2);
+}
+
+/* Cards with icons */
+.stat-card {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 0.75rem 1.5rem rgba(18, 38, 63, 0.03);
+}
+
+.stat-card .icon-box {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.stat-card .icon-box.primary {
+  background-color: rgba(44, 123, 229, 0.1);
+  color: var(--custom-primary);
+}
+
+.stat-card .icon-box.success {
+  background-color: rgba(0, 217, 126, 0.1);
+  color: var(--custom-success);
+}
+
+.stat-card .icon-box.warning {
+  background-color: rgba(246, 195, 67, 0.1);
+  color: var(--custom-warning);
+}
+
+.stat-card .icon-box.info {
+  background-color: rgba(57, 175, 209, 0.1);
+  color: var(--custom-info);
+}
+
+/* Media queries */
+@media (max-width: 768px) {
+  .navbar-vertical {
+    width: 100%;
+    position: relative;
+  }
+  
+  .dashboard-content {
+    margin-left: 0;
+  }
+  
+  body.sidebar-collapsed .navbar-vertical {
+    width: 100%;
+  }
+  
+  body.sidebar-collapsed .dashboard-content {
+    margin-left: 0;
+  }
+}

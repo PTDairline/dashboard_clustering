@@ -1,0 +1,3 @@
+@echo off
+echo Running BCVI Dashboard Application with fixed route handling...
+python app.py
