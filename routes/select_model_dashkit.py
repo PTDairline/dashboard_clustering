@@ -19,11 +19,10 @@ def select_model_dashkit():
             if not selected_models:
                 flash('Vui lòng chọn ít nhất một mô hình.')
                 return redirect(url_for('select_model'))
-            
-            # Kiểm tra dữ liệu PCA
+              # Kiểm tra dữ liệu PCA hoặc dữ liệu đã chọn
             pca_data_file = os.path.join(current_app.config['UPLOAD_FOLDER'], 'pca_data.pkl')
             if not os.path.exists(pca_data_file):
-                flash('Vui lòng thực hiện PCA trước khi chọn mô hình.')
+                flash('Vui lòng xử lý dữ liệu trước khi chọn mô hình.')
                 return redirect(url_for('process_data_dashkit'))
             
             # Load dữ liệu PCA
@@ -31,6 +30,20 @@ def select_model_dashkit():
             
             logging.debug(f"Loaded PCA data shape: {df_pca.shape}")
             logging.debug(f"Selected models: {selected_models}, max_k: {max_k}")
+            
+            # Kiểm tra xem có đang dùng PCA hay không
+            use_pca = True
+            pca_results_file = os.path.join(current_app.config['UPLOAD_FOLDER'], 'pca_results.json')
+            if os.path.exists(pca_results_file):
+                try:
+                    with open(pca_results_file, 'r', encoding='utf-8') as f:
+                        pca_results = json.load(f)
+                        # Nếu có flag no_pca, nghĩa là đã bỏ qua PCA
+                        if pca_results.get('no_pca', False):
+                            use_pca = False
+                            logging.debug("PCA was skipped, using original features")
+                except Exception as e:
+                    logging.error(f"Error checking PCA results: {str(e)}")
             
             # Khởi tạo kết quả
             results = {
@@ -57,7 +70,7 @@ def select_model_dashkit():
                         model_name=model_name,
                         k_range=results['k_range'],
                         selected_k=max_k,
-                        use_pca=True,
+                        use_pca=use_pca,  # Truyền giá trị use_pca đúng
                         selected_features=list(df_pca.columns),
                         explained_variance_ratio=0.95
                     )

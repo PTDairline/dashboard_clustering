@@ -41,6 +41,7 @@ def process_data_dashkit():
                 df = pd.read_pickle(os.path.join(current_app.config['UPLOAD_FOLDER'], 'data.pkl'))
                 
                 feature_option = request.form.get('feature_option')
+                use_pca = request.form.get('use_pca') == 'yes'
                 
                 if feature_option == 'custom':
                     selected_features = request.form.getlist('features')
@@ -56,7 +57,44 @@ def process_data_dashkit():
                 with open(os.path.join(current_app.config['UPLOAD_FOLDER'], 'selected_features.txt'), 'w') as f:
                     f.write(','.join(selected_features))
                 
+                # Save whether to use PCA or not
+                with open(os.path.join(current_app.config['UPLOAD_FOLDER'], 'use_pca.txt'), 'w') as f:
+                    f.write('yes' if use_pca else 'no')
+                
                 flash(f'Đã chọn {len(selected_features)} features.')
+                
+                # If user chose not to use PCA, prepare the data and move directly to model selection
+                if not use_pca:
+                    try:
+                        # Handle missing values
+                        selected_data = df[selected_features].fillna(df[selected_features].mean())
+                        
+                        # Save the selected features as PCA data to use in the next step
+                        selected_data.to_pickle(os.path.join(current_app.config['UPLOAD_FOLDER'], 'pca_data.pkl'))
+                        
+                        # Also save PCA results JSON with a no_pca flag for reference
+                        pca_results = {
+                            'n_components': len(selected_features),
+                            'explained_variance_ratio': 1.0,
+                            'original_features': selected_features,
+                            'no_pca': True  # Flag to indicate PCA was skipped
+                        }
+                        with open(os.path.join(current_app.config['UPLOAD_FOLDER'], 'pca_results.json'), 'w') as f:
+                            json.dump(pca_results, f)
+                        
+                        # Clear BCVI cache if it exists
+                        bcvi_cache_file = os.path.join(current_app.config['UPLOAD_FOLDER'], 'bcvi_cache.pkl')
+                        bcvi_flag_file = os.path.join(current_app.config['UPLOAD_FOLDER'], 'bcvi_calculated.flag')
+                        if os.path.exists(bcvi_cache_file):
+                            os.remove(bcvi_cache_file)
+                        if os.path.exists(bcvi_flag_file):
+                            os.remove(bcvi_flag_file)
+                            
+                        flash('Đã bỏ qua PCA và dùng trực tiếp các features đã chọn.')
+                        return redirect(url_for('select_model'))
+                    except Exception as e:
+                        flash(f'Lỗi khi chuẩn bị dữ liệu không dùng PCA: {str(e)}')
+                        
                 return redirect(url_for('process_data_dashkit'))
                 
             except Exception as e:
@@ -160,8 +198,7 @@ def process_data_dashkit():
             except Exception as e:
                 flash(f'Lỗi khi thực hiện PCA: {str(e)}')
                 return redirect(url_for('process_data_dashkit'))
-    
-    # GET request - display page
+      # GET request - display page
     try:
         # Load data info
         if not os.path.exists(os.path.join(current_app.config['UPLOAD_FOLDER'], 'data.pkl')):
@@ -170,6 +207,13 @@ def process_data_dashkit():
         
         df = pd.read_pickle(os.path.join(current_app.config['UPLOAD_FOLDER'], 'data.pkl'))
         numerical_features = df.select_dtypes(include=[np.number]).columns.tolist()
+        
+        # Check if user has chosen whether to use PCA or not
+        use_pca = True  # Default to yes
+        use_pca_file = os.path.join(current_app.config['UPLOAD_FOLDER'], 'use_pca.txt')
+        if os.path.exists(use_pca_file):
+            with open(use_pca_file, 'r') as f:
+                use_pca = f.read().strip() == 'yes'
         
         # Load selected features if exists
         selected_features = []
@@ -191,14 +235,14 @@ def process_data_dashkit():
                 # Remove corrupted file
                 os.remove(pca_results_file)
                 pca_result = None
-        
         data = {
             'num_rows': len(df),
             'num_features': len(df.columns),
             'numerical_features': numerical_features,
             'selected_features': selected_features,
             'pca_result': pca_result,
-            'proceed_to_model': bool(pca_result)  # Can proceed if PCA is done
+            'use_pca': use_pca,
+            'proceed_to_model': bool(pca_result) or (selected_features and not use_pca)  # Can proceed if PCA is done OR if features are selected and PCA is skipped
         }
         
         return render_template('process_data_dashkit.html', data=data)

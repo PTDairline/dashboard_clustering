@@ -234,7 +234,7 @@ def wiroonsri_index(X, labels, centroids):
         logging.error(f"Lỗi tính Wiroonsri: {str(e)}")
         return 0.0
 
-def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False):
+def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False, use_pca=True):
     """
     Gợi ý số k tối ưu dựa trên các chỉ số CVI và biểu đồ Elbow.
     
@@ -247,6 +247,9 @@ def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False):
     use_wiroonsri_starczewski : bool, optional
         Nếu True, sử dụng Wiroonsri và Starczewski để gợi ý số cụm tối ưu
         Nếu False, sử dụng Silhouette và Elbow để gợi ý số cụm tối ưu
+    use_pca : bool, optional
+        Nếu True, dùng PCA làm phương pháp giảm chiều
+        Nếu False, dùng trực tiếp các features được chọn
         
     Returns:
     --------
@@ -257,7 +260,7 @@ def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False):
             Lý do gợi ý số cụm tối ưu
     """
     # Comment: Ghi log bắt đầu hàm gợi ý số cụm tối ưu.
-    logging.debug(f"Bắt đầu suggest_optimal_k, use_wiroonsri_starczewski={use_wiroonsri_starczewski}")
+    logging.debug(f"Bắt đầu suggest_optimal_k, use_wiroonsri_starczewski={use_wiroonsri_starczewski}, use_pca={use_pca}")
     
     # Comment: Khởi tạo biến để lưu kết quả.
     # - `optimal_k`: Số cụm tối ưu (mặc định là giá trị nhỏ nhất trong `k_range`).
