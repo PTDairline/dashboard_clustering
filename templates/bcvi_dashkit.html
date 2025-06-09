@@ -5,161 +5,7 @@
 {% block header %}Phân Tích BCVI (Between-Cluster Validation Index){% endblock %}
 
 {% block extra_css %}
-<style>
-    .bcvi-card {
-        transition: all 0.3s ease;
-        border: none;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-    .bcvi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    }
-    .optimal-badge {
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        z-index: 10;
-    }
-    .bcvi-table {
-        max-height: 400px;
-        overflow-y: auto;
-        border-radius: 8px;
-    }
-    .alpha-grid input {
-        transition: all 0.3s;
-        border-radius: 6px;
-    }
-    .alpha-grid input:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.25);
-        background-color: #f8f9fa;
-        transform: scale(1.02);
-    }
-    .alpha-grid td {
-        padding: 12px;
-        vertical-align: middle;
-    }
-    .alpha-grid th {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        padding: 15px;
-        border-bottom: 2px solid #dee2e6;
-    }
-    .alpha-grid {
-        margin-bottom: 20px;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .formula-container {
-        font-family: 'JetBrains Mono', 'Consolas', monospace;
-        font-size: 0.95em;
-        border-left: 4px solid #0d6efd;
-    }
-    .priority-indicator {
-        transition: all 0.3s ease;
-        font-size: 0.75em;
-        font-weight: 600;
-    }
-    .bg-gradient {
-        background: linear-gradient(135deg, #198754 0%, #20c997 100%) !important;
-    }
-    .model-tab-container {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    .cvi-pill-tabs .nav-link {
-        border-radius: 20px;
-        margin-right: 8px;
-        transition: all 0.3s ease;
-    }
-    .cvi-pill-tabs .nav-link.active {
-        background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
-    }
-    .optimal-k-card {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        border: none;
-        border-radius: 12px;
-        transition: all 0.3s ease;
-    }
-    .optimal-k-card:hover {
-        transform: scale(1.02);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-    }
-    .results-table {
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .results-table th {
-        background: linear-gradient(135deg, #495057 0%, #6c757d 100%);
-        color: white;
-        font-weight: 600;
-        text-align: center;
-        padding: 12px;
-    }
-    .results-table td {
-        text-align: center;
-        padding: 10px;
-        vertical-align: middle;
-    }    .suggestion-card {
-        border: none;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-    }
-      /* Enhanced styles for the BCVI summary table */
-    .bcvi-summary-table {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-        border-radius: 10px;
-        overflow: hidden;
-        table-layout: fixed;
-        width: 100% !important;
-        max-width: 100%;
-        margin-bottom: 1rem;
-    }
-    
-    .bcvi-summary-table th {
-        font-weight: 600;
-    }
-    
-    .bcvi-summary-table td {
-        padding: 10px;
-        transition: all 0.2s;
-        word-wrap: break-word;
-    }
-    
-    .bcvi-summary-table tr:hover td {
-        background-color: #f0f7ff !important;
-    }
-    
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        width: 100% !important;
-        margin-bottom: 1rem;
-    }
-    
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #05445E 0%, #189AB4 100%);
-    }
-    
-    .optimal-bcvi {
-        font-weight: bold;
-        color: #198754;
-        animation: pulse-highlight 2s infinite;
-    }
-    
-    @keyframes pulse-highlight {
-        0% { background-color: transparent; }
-        50% { background-color: rgba(25, 135, 84, 0.1); }
-        100% { background-color: transparent; }
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='dashkit/css/bcvi_dashkit.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -582,58 +428,83 @@
                                 </div>
                             </div>
                             {% endfor %}
-                        </div>
-                          <!-- Bảng tổng hợp tất cả CVI và BCVI cho từng K -->                        <div class="card mt-4 border-0 shadow">
-                            <div class="card-header bg-gradient-primary text-white">
+                        </div>                          <!-- Bảng tổng hợp tất cả CVI và BCVI cho từng K -->
+                        <div class="card mt-4 border-0 shadow">
+                            <div class="card-header text-white py-2" style="background-color: #006d77;">
                                 <h6 class="mb-0">
                                     <i class="fas fa-table me-2"></i>Bảng Tổng Hợp BCVI Cho Tất Cả Chỉ Số
                                 </h6>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body p-2">
                                 <div class="table-responsive">
-                                    <table class="table table-bordered table-striped table-hover bcvi-summary-table w-100">
-                                        <thead>
-                                            <tr style="background: linear-gradient(135deg, #212529 0%, #495057 100%); color: white;">
-                                                <th style="vertical-align: middle; text-align: center; border: 1px solid #dee2e6; width: 8%;">K</th>
-                                                {% for cvi_type in data.bcvi_results[model].keys() %}
-                                                <th class="text-center" style="border: 1px solid #dee2e6; background: linear-gradient(135deg, #053B50 0%, #176B87 100%); width: calc(92% / {{ data.bcvi_results[model].keys()|length }});">{{ cvi_type|upper }}</th>
-                                                {% endfor %}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% set all_k_values = [] %}
-                                            {% for cvi_type, results in data.bcvi_results[model].items() %}
-                                                {% for result in results %}
+                                    <table class="table table-sm table-bordered table-hover bcvi-summary-compact">
+                                        <!-- Chuẩn bị dữ liệu -->
+                                        {% set all_k_values = [] %}
+                                        {% set cvi_order = ['silhouette', 'calinski_harabasz', 'starczewski', 'wiroonsri', 'davies_bouldin'] %}
+                                        {% set available_cvi = [] %}
+                                        
+                                        {% for cvi_type in cvi_order %}
+                                            {% if cvi_type in data.bcvi_results[model] %}
+                                                {% set _ = available_cvi.append(cvi_type) %}
+                                                {% for result in data.bcvi_results[model][cvi_type] %}
                                                     {% if result.k not in all_k_values %}
                                                         {% set _ = all_k_values.append(result.k) %}
                                                     {% endif %}
                                                 {% endfor %}
-                                            {% endfor %}
-                                            
+                                            {% endif %}
+                                        {% endfor %}
+                                        
+                                        <thead>
+                                            <tr class="bcvi-header-row" style="background-color: #006d77;">
+                                                <th class="k-col bcvi-header">K</th>
+                                                {% for cvi_type in available_cvi %}
+                                                    {% set display_name = cvi_type %}
+                                                    {% if cvi_type == 'calinski_harabasz' %}
+                                                        {% set display_name = 'CALINSKI' %}
+                                                    {% elif cvi_type == 'davies_bouldin' %}
+                                                        {% set display_name = 'DAVIES' %}
+                                                    {% elif cvi_type == 'starczewski' %}
+                                                        {% set display_name = 'STARCZ' %}
+                                                    {% elif cvi_type == 'wiroonsri' %}
+                                                        {% set display_name = 'WIROON' %}
+                                                    {% elif cvi_type == 'silhouette' %}
+                                                        {% set display_name = 'SILH' %}
+                                                    {% endif %}
+                                                    <th class="text-center bcvi-header">{{ display_name }}</th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
                                             {% for k in all_k_values|sort %}
-                                            <tr {% if loop.index is even %}style="background-color: #f8f9fa;"{% endif %}>
-                                                <td class="text-center fw-bold" style="border: 1px solid #dee2e6; background-color: #e9ecef; width: 8%;">{{ k }}</td>
+                                            <tr {% if loop.index is even %}class="table-row-even"{% endif %}>
+                                                <td class="k-col text-center fw-bold">{{ k }}</td>
                                                 
-                                                {% for cvi_type in data.bcvi_results[model].keys() %}
-                                                    {% set found = false %}
+                                                {% for cvi_type in available_cvi %}
+                                                    {% set found_value = none %}
+                                                    {% set is_optimal = false %}
+                                                    
                                                     {% for result in data.bcvi_results[model][cvi_type] %}
                                                         {% if result.k == k %}
-                                                            {% set found = true %}
+                                                            {% set found_value = result.bcvi %}
                                                             {% if model in data.optimal_k and data.optimal_k[model][cvi_type] == k %}
-                                                                <td class="text-center fw-bold text-success" style="border: 1px solid #dee2e6; background-color: #d1e7dd;">
-                                                                    {{ "%.4f"|format(result.bcvi) }}
-                                                                    <i class="fas fa-check-circle text-success ms-1"></i>
-                                                                </td>
-                                                            {% else %}
-                                                                <td class="text-center fw-bold text-primary" style="border: 1px solid #dee2e6;">
-                                                                    {{ "%.4f"|format(result.bcvi) }}
-                                                                </td>
+                                                                {% set is_optimal = true %}
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
                                                     
-                                                    {% if not found %}
-                                                    <td class="text-center" style="border: 1px solid #dee2e6;">-</td>
+                                                    {% if found_value %}
+                                                        {% if is_optimal %}
+                                                            <td class="text-center optimal-bcvi" style="background-color: #d1e7dd; position: relative;">
+                                                                <span class="text-success fw-bold">{{ "%.3f"|format(found_value) }}</span>
+                                                                <i class="fas fa-check-circle text-success optimal-icon" style="font-size: 0.7rem; position: absolute; top: 2px; right: 2px;"></i>
+                                                            </td>
+                                                        {% else %}
+                                                            <td class="text-center">
+                                                                <span class="bcvi-val">{{ "%.3f"|format(found_value) }}</span>
+                                                            </td>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <td class="text-center text-muted">-</td>
                                                     {% endif %}
                                                 {% endfor %}
                                             </tr>
@@ -641,13 +512,14 @@
                                         </tbody>
                                     </table>
                                     
-                                    <div class="mt-3 d-flex justify-content-center align-items-center bg-light p-2 rounded">
-                                        <div class="d-flex flex-wrap justify-content-center w-100">
-                                            <span class="me-4 mb-2"><i class="fas fa-check-circle text-success"></i> Giá trị tối ưu</span>
-                                            <span class="me-4 mb-2"><span class="badge" style="background-color: #d1e7dd;">Ô màu xanh</span> K tối ưu cho chỉ số</span>
-                                            <span class="mb-2"><span class="badge" style="background: linear-gradient(135deg, #053B50 0%, #176B87 100%); color: white;">Tiêu đề</span> Chỉ số phân cụm</span>
-                                        </div>
+                                    <!-- Legend -->
+                                    <div class="bcvi-legend text-center">
+                                        <span><i class="fas fa-check-circle text-success"></i> Giá trị tối ưu</span>
+                                        <span><span class="badge" style="background-color: #d1e7dd; color: #198754;">K tối ưu</span></span>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
                                 </div>
                             </div>
                         </div>
@@ -676,190 +548,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>    document.addEventListener('DOMContentLoaded', function() {
-        // Remove any loading overlay that might still be present from previous submission
-        const existingOverlay = document.getElementById('bcvi-loading-overlay');
-        if (existingOverlay) {
-            existingOverlay.remove();
-        }
-        
-        // Hiệu ứng hover cho BCVI cards
-        const bcviCards = document.querySelectorAll('.bcvi-card');
-        bcviCards.forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-2px)';
-                this.style.boxShadow = '0 8px 20px rgba(0,0,0,0.15)';
-            });
-            
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0)';
-                this.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
-            });
-        });
-
-        // Cuộn mượt cho tables dài
-        const bcviTables = document.querySelectorAll('.bcvi-table');
-        bcviTables.forEach(table => {
-            table.style.scrollBehavior = 'smooth';
-        });
-        
-        // Xử lý thay đổi Alpha input
-        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
-            input.addEventListener('input', function() {
-                updateAlphaIndicators();
-                updateAlphaSum();
-            });
-            
-            input.addEventListener('focus', function() {
-                this.closest('tr').style.backgroundColor = '#f8f9fa';
-            });
-            
-            input.addEventListener('blur', function() {
-                this.closest('tr').style.backgroundColor = '';
-            });
-        });
-          // Form submission handler with debugging
-        const bcviForm = document.getElementById('bcviForm');
-        if (bcviForm) {
-            bcviForm.addEventListener('submit', function(e) {
-                console.log('Form submitted!');
-                
-                // Show loading overlay
-                const loadingOverlay = document.createElement('div');
-                loadingOverlay.id = 'bcvi-loading-overlay'; // Add ID for easy removal
-                loadingOverlay.style.position = 'fixed';
-                loadingOverlay.style.top = '0';
-                loadingOverlay.style.left = '0';
-                loadingOverlay.style.width = '100%';
-                loadingOverlay.style.height = '100%';
-                loadingOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-                loadingOverlay.style.zIndex = '9999';
-                loadingOverlay.style.display = 'flex';
-                loadingOverlay.style.justifyContent = 'center';
-                loadingOverlay.style.alignItems = 'center';
-                
-                const spinner = document.createElement('div');
-                spinner.innerHTML = '<div class="spinner-border text-light" role="status"><span class="visually-hidden">Đang tính toán...</span></div><div class="text-light mt-3">Đang tính BCVI...</div>';
-                loadingOverlay.appendChild(spinner);
-                
-                document.body.appendChild(loadingOverlay);
-            });
-        }
-        
-        // Khởi tạo indicators
-        updateAlphaIndicators();
-        updateAlphaSum();
-    });
-      // Cập nhật các chỉ báo độ ưu tiên
-    function updateAlphaIndicators() {
-        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
-            const value = parseFloat(input.value) || 0;
-            const k = input.getAttribute('data-k');
-            const indicator = document.querySelector(`.priority-indicator[data-k="${k}"]`);
-            
-            if (indicator) {
-                let text = '';
-                let className = 'badge ';
-                
-                if (value < 1) {
-                    text = 'Thấp';
-                    className += 'bg-info';
-                } else if (value === 1) {
-                    text = 'Chuẩn';
-                    className += 'bg-secondary';
-                } else if (value <= 10) {
-                    text = 'Cao';
-                    className += 'bg-warning';
-                } else if (value <= 100) {
-                    text = 'Rất cao';
-                    className += 'bg-danger';
-                } else {
-                    text = 'Cực cao';
-                    className += 'bg-dark';
-                }
-                
-                indicator.textContent = text;
-                indicator.className = className;
-            }
-        });
-    }
-    
-    // Cập nhật tổng Alpha
-    function updateAlphaSum() {
-        let sum = 0;
-        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
-            sum += parseFloat(input.value) || 0;
-        });
-        
-        const sumElement = document.getElementById('alphaSum');
-        if (sumElement) {
-            sumElement.textContent = sum.toFixed(2);
-        }
-    }
-      // Thiết lập preset alpha
-    function setAlphaPreset(preset) {
-        const inputs = document.querySelectorAll('input[name^="alpha_"]');
-        const count = inputs.length;
-        
-        inputs.forEach((input, index) => {
-            let value = 1.0;
-              switch(preset) {
-                case 'uniform':
-                    value = 1.00;
-                    break;
-                case 'ascending':
-                    value = 0.50 + (index * 9.50 / (count - 1)); // 0.5 → 10
-                    break;
-                case 'descending':
-                    value = 10.00 - (index * 9.50 / (count - 1)); // 10 → 0.5
-                    break;
-                case 'peak':
-                    const mid = Math.floor(count / 2);
-                    const distance = Math.abs(index - mid);
-                    value = 25.00 - (distance * 5); // Max 25 at center
-                    break;
-                case 'extreme':
-                    value = 100.00; // Tất cả đều 100
-                    break;
-            }
-            
-            input.value = value.toFixed(2);
-        });
-        
-        updateAlphaIndicators();
-        updateAlphaSum();
-    }
-      // Thiết lập alpha tùy chỉnh cho tất cả K
-    function setCustomAlpha() {
-        const customValue = document.getElementById('customAlpha').value;
-        if (customValue && !isNaN(customValue) && parseFloat(customValue) > 0) {
-            document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
-                input.value = parseFloat(customValue).toFixed(2);
-            });
-            
-            updateAlphaIndicators();
-            updateAlphaSum();
-            
-            // Clear custom input
-            document.getElementById('customAlpha').value = '';
-        } else {
-            alert('Vui lòng nhập giá trị alpha hợp lệ (> 0)');
-        }
-    }
-      // Thiết lập alpha tối ưu cho k cụ thể
-    function setAlphaForOptimalK(optimalK) {
-        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
-            const k = parseInt(input.getAttribute('data-k'));
-            
-            if (k === optimalK) {
-                input.value = '25.00';  // Ưu tiên rất cao cho k tối ưu
-            } else {
-                input.value = '0.50';  // Ưu tiên thấp cho các k khác
-            }
-        });
-        
-        updateAlphaIndicators();
-        updateAlphaSum();
-    }
-</script>
+<script src="{{ url_for('static', filename='dashkit/js/bcvi_dashkit.js') }}"></script>
 {% endblock %}
