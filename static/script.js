@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const featureCheckboxInputs = document.querySelectorAll('.feature-checkbox');
     const selectedCount = document.getElementById('selectedCount');
 
+    // Only proceed with feature selection logic if elements exist
     if (featureDefaultRadio && featureCustomRadio && featureCheckboxes) {
         console.log('Found all feature selection elements');
 
@@ -29,59 +30,71 @@ document.addEventListener('DOMContentLoaded', function () {
                 featureCheckboxes.classList.add('d-none');
                 console.log('Feature checkboxes should be hidden');
             }
-        });
-
-        // Kiểm tra trạng thái ban đầu
+        });        // Kiểm tra trạng thái ban đầu
         if (featureCustomRadio.checked) {
             featureCheckboxes.classList.remove('d-none');
             console.log('Initial state: Custom radio checked, showing checkboxes');
         }
-    } else {
-        console.error('Missing elements:', {
-            featureDefaultRadio: !!featureDefaultRadio,
-            featureCustomRadio: !!featureCustomRadio,
-            featureCheckboxes: !!featureCheckboxes
-        });
-    }
 
-    // Cập nhật số lượng feature đã chọn
-    function updateSelectedCount() {
-        const count = featureDefaultRadio.checked ? 5 : document.querySelectorAll('.feature-checkbox:checked').length;
-        selectedCount.textContent = 'Đã chọn: ' + count;
-        console.log('Selected count updated:', count);
-    }
+        // Cập nhật số lượng feature đã chọn
+        function updateSelectedCount() {
+            if (selectedCount) {
+                const count = featureDefaultRadio.checked ? 5 : document.querySelectorAll('.feature-checkbox:checked').length;
+                selectedCount.textContent = 'Đã chọn: ' + count;
+                console.log('Selected count updated:', count);
+            }
+        }
 
-    // Sự kiện thay đổi checkbox
-    if (featureCheckboxInputs.length > 0) {
-        console.log('Found', featureCheckboxInputs.length, 'checkboxes');
-        featureCheckboxInputs.forEach(function (checkbox) {
-            checkbox.addEventListener('change', function () {
-                updateSelectedCount();
-                console.log('Checkbox changed:', checkbox.value, checkbox.checked);
+        // Sự kiện thay đổi checkbox
+        if (featureCheckboxInputs.length > 0) {
+            console.log('Found', featureCheckboxInputs.length, 'checkboxes');
+            featureCheckboxInputs.forEach(function (checkbox) {
+                checkbox.addEventListener('change', function () {
+                    updateSelectedCount();
+                    console.log('Checkbox changed:', checkbox.value, checkbox.checked);
+                });
             });
-        });
-    } else {
-        console.warn('No feature checkboxes found');
-    }
+        } else {
+            console.warn('No feature checkboxes found');
+        }
 
-    // Xử lý radio button PCA/không PCA
+        // Initial count update
+        updateSelectedCount();
+
+        // Reset features
+        const resetFeaturesBtn = document.getElementById('resetFeatures');
+        if (resetFeaturesBtn) {
+            resetFeaturesBtn.addEventListener('click', function () {
+                console.log('Reset features clicked');
+                featureDefaultRadio.checked = true;
+                featureCustomRadio.checked = false;
+                featureCheckboxes.classList.add('d-none');
+                featureCheckboxInputs.forEach(function (checkbox) {
+                    checkbox.checked = false;
+                });
+                updateSelectedCount();
+            });
+        }
+    } else {
+        console.log('Feature selection elements not found on this page - skipping feature selection logic');
+    }    // Xử lý radio button PCA/không PCA
     const processMethodRadios = document.querySelectorAll('input[name="process_method"]');
     const pcaOptions = document.querySelector('.pca-options');
-    if (processMethodRadios && pcaOptions) {
+    if (processMethodRadios.length > 0 && pcaOptions) {
         processMethodRadios.forEach(function (radio) {
             radio.addEventListener('change', function () {
                 pcaOptions.classList.toggle('d-none', this.value !== 'pca');
                 const explainedVariance = document.getElementById('explained_variance');
-                if (this.value !== 'pca') {
-                    explainedVariance.removeAttribute('required');
-                } else {
-                    explainedVariance.setAttribute('required', 'required');
+                if (explainedVariance) {
+                    if (this.value !== 'pca') {
+                        explainedVariance.removeAttribute('required');
+                    } else {
+                        explainedVariance.setAttribute('required', 'required');
+                    }
                 }
             });
         });
-    }
-
-    // Progress bar cho form
+    }    // Progress bar cho form
     const forms = [
         document.getElementById('uploadForm'),
         document.getElementById('featureForm'),
@@ -98,21 +111,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
     });
-
-    // Reset features
-    const resetFeaturesBtn = document.getElementById('resetFeatures');
-    if (resetFeaturesBtn) {
-        resetFeaturesBtn.addEventListener('click', function () {
-            console.log('Reset features clicked');
-            featureDefaultRadio.checked = true;
-            featureCustomRadio.checked = false;
-            featureCheckboxes.classList.add('d-none');
-            featureCheckboxInputs.forEach(function (checkbox) {
-                checkbox.checked = false;
-            });
-            updateSelectedCount();
-        });
-    }
 
     // Modal plot zoom
     const plotModal = document.getElementById('plotModal');
