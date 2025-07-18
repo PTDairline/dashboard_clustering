@@ -59,6 +59,52 @@
 </div>
 
 <div class="row">
+    <!-- Thông tin về xử lý song song nếu có -->
+    {% if data and data.processing_info %}
+    <div class="col-12 mb-4">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-microchip me-2"></i>Thông tin xử lý song song
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="fas fa-clock me-2"></i>Thời gian xử lý</h6>
+                                <p class="card-text mb-1">Tổng thời gian: <strong>{{ "%.2f"|format(data.processing_info.total_time) }} giây</strong></p>
+                                <p class="card-text mb-1">Thời gian gợi ý: <strong>{{ "%.2f"|format(data.processing_info.suggestion_time) }} giây</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="fas fa-tasks me-2"></i>Thời gian theo mô hình</h6>
+                                <ul class="list-unstyled mb-0">
+                                    {% for model, time in data.processing_info.model_times.items() %}
+                                    <li>{{ model }}: <strong>{{ "%.2f"|format(time) }} giây</strong></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="fas fa-server me-2"></i>Sử dụng đa luồng</h6>
+                                <p class="card-text mb-1">Số mô hình song song: <strong>{{ data.processing_info.parallel_info.models_run_parallel }}</strong></p>
+                                <p class="card-text mb-1">Luồng mỗi mô hình: <strong>{{ data.processing_info.parallel_info.threads_per_model }}</strong></p>
+                                <p class="card-text mb-0">Luồng gợi ý k: <strong>{{ data.processing_info.parallel_info.suggestion_threads }}</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Sidebar -->
     <div class="col-md-3">
         <!-- Card: Quy trình -->
@@ -323,6 +369,20 @@
                                 </div>
                             </div>
                             {% endif %}
+                            
+                            <!-- Silhouette Plot -->
+                            {% if data.plots[model].silhouette.plot %}
+                            <div class="col-md-6 mb-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Silhouette Score</h6>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <img src="data:image/png;base64,{{ data.plots[model].silhouette.plot }}" class="img-fluid" alt="Silhouette Plot">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
 
                         <!-- Scatter Plots -->
@@ -358,31 +418,27 @@
         {% endif %}
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const modelForm = document.getElementById('modelForm');
-        const modelProgress = document.getElementById('modelProgress');
+        const form = document.getElementById('modelForm');
+        const progress = document.getElementById('modelProgress');
         
-        if (modelForm && modelProgress) {
-            modelForm.addEventListener('submit', function() {
-                modelProgress.classList.remove('d-none');
+        if (form) {
+            form.addEventListener('submit', function() {
+                progress.classList.remove('d-none');
             });
         }
-
-        // Model card hover effects
-        const modelCards = document.querySelectorAll('.model-card');
-        modelCards.forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-2px)';
-            });
-            
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0)';
-            });
-        });
+        
+        // Tooltip initialization
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
     });
 </script>
+
+<div class="floating-btn">
+    <a href="{{ url_for('dashkit_index') }}" class="btn btn-outline-primary" data-bs-toggle="tooltip" title="Trở về trang chủ">
+        <i class="fas fa-home"></i>
+    </a>
+</div>
 {% endblock %}

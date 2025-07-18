@@ -165,6 +165,19 @@ def bcvi_dashkit():
                     logging.debug("Updated model_results.json with default CVI scores")
                 except Exception as e:
                     logging.error(f"Error saving updated model_results.json: {str(e)}")
+              # Kiểm tra xem có đang dùng PCA hay không
+            use_pca = True
+            pca_results_file = os.path.join(current_app.config['UPLOAD_FOLDER'], 'pca_results.json')
+            if os.path.exists(pca_results_file):
+                try:
+                    with open(pca_results_file, 'r', encoding='utf-8') as f:
+                        pca_results_data = json.load(f)
+                        # Nếu có flag no_pca, nghĩa là đã bỏ qua PCA
+                        if pca_results_data.get('no_pca', False):
+                            use_pca = False
+                            logging.debug("PCA was skipped, using original features for BCVI")
+                except Exception as e:
+                    logging.error(f"Error checking PCA results: {str(e)}")
             
             # Tính BCVI sử dụng CVI scores thực tế
             bcvi_results = {}

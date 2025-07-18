@@ -169,36 +169,6 @@
             </div>
         </div>
         {% endif %}
-        
-        <!-- Biểu đồ phân phối dữ liệu -->
-        {% if data.numerical_features and data.numerical_features|length > 0 %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title">
-                    <i class="fas fa-chart-bar me-2 text-danger"></i>Biểu Đồ Phân Phối
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <div class="form-group">
-                            <label for="featureSelect">Chọn biến để xem phân phối:</label>
-                            <select class="form-control" id="featureSelect">
-                                {% for feature in data.numerical_features %}
-                                <option value="{{ feature }}">{{ feature }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-8">
-                        <div id="histogramContainer" style="height: 300px;">
-                            <!-- Biểu đồ histogram sẽ được render bằng JS -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}

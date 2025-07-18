@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Chạy dashboard với xử lý song song",
+			"type": "shell",
+			"command": "run_fixed_bcvi.bat",
+			"group": "run"
+		}
+	]
+}

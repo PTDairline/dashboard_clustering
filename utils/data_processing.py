@@ -1,8 +1,50 @@
 import pandas as pd
 import numpy as np
+import re
+
 
 # Comment: Import các thư viện cần thiết.
 # - pandas, numpy: Dùng cho xử lý dữ liệu.
+# - re: Dùng cho chuyển đổi tiền tệ.
+
+def parse_money(value):
+    # Chuyển đổi giá trị tiền tệ kiểu '€110.5M', '€1.2B', '€500K' thành số thực
+    if pd.isna(value):
+        return np.nan
+    
+    if not isinstance(value, str):
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return np.nan
+    
+    try:
+        # Xóa ký hiệu tiền tệ, dấu phẩy và khoảng trắng
+        clean_value = value.replace('€', '').replace(',', '').strip()
+        
+        # Xử lý hậu tố M (triệu), K (nghìn), B (tỷ)
+        if clean_value.endswith('M'):
+            return float(clean_value[:-1]) * 1e6
+        elif clean_value.endswith('K'):
+            return float(clean_value[:-1]) * 1e3
+        elif clean_value.endswith('B'):
+            return float(clean_value[:-1]) * 1e9
+        else:
+            # Thử chuyển đổi trực tiếp nếu không có hậu tố
+            return float(clean_value)
+    except Exception:
+        return np.nan
+
+def convert_money_columns(df):
+    # Danh sách cột tiền tệ phổ biến - chỉ chuyển đổi các cột này
+    money_columns = ['Value', 'Wage', 'Release Clause']
+    
+    # Chỉ chuyển đổi các cột tiền tệ đã biết
+    for col in money_columns:
+        if col in df.columns:
+            df[col] = df[col].apply(parse_money)
+    
+    return df
 
 def allowed_file(filename):
     # Comment: Hàm kiểm tra định dạng file có được phép tải lên không.
@@ -18,6 +60,7 @@ def read_data(file_path):
             df = pd.read_csv(file_path)
         elif file_path.endswith('.xlsx'):
             df = pd.read_excel(file_path)
+        df = convert_money_columns(df)
         return df, None
     except Exception as e:
         return None, str(e)

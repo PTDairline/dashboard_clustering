@@ -1,7 +1,8 @@
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
-from sklearn.metrics import silhouette_score, davies_bouldin_score
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 import logging
+import concurrent.futures  # Thêm concurrent.futures cho đa luồng
 
 # Comment: Import các thư viện cần thiết.
 # - numpy: Dùng cho tính toán số học.
@@ -14,227 +15,143 @@ import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def calinski_harabasz_index(X, labels, centroids):
-    """
-    Tính toán chỉ số Calinski-Harabasz (CH).
-    Giá trị lớn nhất là tối ưu.
-    """
+    """Tính toán chỉ số Calinski-Harabasz (CH) với tối đa 1000 điểm."""
     try:
-        # Comment: Ghi log bắt đầu tính toán chỉ số Calinski-Harabasz.
-        logging.debug("Bắt đầu tính Calinski-Harabasz")
-        
-        # Comment: Lấy số mẫu `n` và số cụm `k` từ dữ liệu.
-        # - Kiểm tra điều kiện: cần ít nhất 2 cụm và số mẫu phải lớn hơn số cụm.
+        # Lấy mẫu 1000 điểm nếu dữ liệu lớn hơn
         n = len(X)
-        k = len(np.unique(labels))
-        if k < 2 or n <= k:
-            logging.warning("Số cụm không hợp lệ để tính Calinski-Harabasz")
+        if n > 1000:
+            indices = np.random.choice(n, size=1000, replace=False)
+            X = X[indices]
+            labels = labels[indices]
+        
+        if len(np.unique(labels)) < 2:
             return 0.0
         
-        # Comment: Tính trung tâm toàn bộ tập dữ liệu (`v_0`).
-        v_0 = np.mean(X, axis=0)
-        
-        # Comment: Tính tử số: Between-cluster sum of squares (BSS).
-        # - Tổng bình phương khoảng cách từ trung tâm cụm đến trung tâm toàn bộ, nhân với kích thước cụm.
-        bss = 0.0
-        for j in range(k):
-            cluster_size = np.sum(labels == j)
-            bss += cluster_size * np.linalg.norm(centroids[j] - v_0) ** 2
-        
-        # Comment: Tính mẫu số: Within-cluster sum of squares (WSS).
-        # - Tổng bình phương khoảng cách từ các điểm trong cụm đến trung tâm cụm.
-        wss = 0.0
-        for j in range(k):
-            points = X[labels == j]
-            if len(points) > 0:
-                distances = np.linalg.norm(points - centroids[j], axis=1) ** 2
-                wss += np.sum(distances)
-        
-        # Comment: Kiểm tra WSS, nếu bằng 0 thì trả về giá trị mặc định.
-        if wss == 0:
-            logging.warning("WSS bằng 0, trả về Calinski-Harabasz mặc định")
-            return 0.0
-        
-        # Comment: Tính chỉ số Calinski-Harabasz theo công thức: (n-k)*BSS / ((k-1)*WSS).
-        ch = (n - k) * bss / ((k - 1) * wss)
-        logging.debug(f"Calinski-Harabasz: {ch}")
-        return ch
-    except Exception as e:
-        # Comment: Xử lý lỗi nếu tính toán thất bại.
-        logging.error(f"Lỗi tính Calinski-Harabasz: {str(e)}")
+        # Tính CH index
+        return calinski_harabasz_score(X, labels)
+    except Exception:
         return 0.0
 
 def silhouette_index(X, labels):
-    """
-    Tính toán chỉ số Silhouette (SH) bằng sklearn.
-    Giá trị lớn nhất là tối ưu.
-    """
+    """Tính toán chỉ số Silhouette (SH) với tối đa 1000 điểm."""
     try:
-        # Comment: Ghi log bắt đầu tính toán chỉ số Silhouette.
-        logging.debug("Bắt đầu tính Silhouette")
+        # Lấy mẫu 1000 điểm nếu dữ liệu lớn hơn
+        n = len(X)
+        if n > 1000:
+            indices = np.random.choice(n, size=1000, replace=False)
+            X = X[indices]
+            labels = labels[indices]
         
-        # Comment: Kiểm tra số cụm, cần ít nhất 2 cụm để tính Silhouette.
         if len(np.unique(labels)) < 2:
-            logging.warning("Số cụm không hợp lệ để tính Silhouette")
             return 0.0
         
-        # Comment: Tính chỉ số Silhouette bằng `sklearn.metrics.silhouette_score`.
-        sh = silhouette_score(X, labels)
-        logging.debug(f"Silhouette: {sh}")
-        return sh
-    except Exception as e:
-        # Comment: Xử lý lỗi nếu tính toán thất bại.
-        logging.error(f"Lỗi tính Silhouette: {str(e)}")
+        return silhouette_score(X, labels)
+    except Exception:
         return 0.0
 
-def davies_bouldin_index(X, labels, centroids, q=2, t=2):
-    """
-    Tính toán chỉ số Davies-Bouldin (DB) bằng sklearn.
-    Giá trị nhỏ nhất là tối ưu.
-    """
+def davies_bouldin_index(X, labels, centroids):
+    """Tính toán chỉ số Davies-Bouldin (DB) với tối đa 1000 điểm."""
     try:
-        # Comment: Ghi log bắt đầu tính toán chỉ số Davies-Bouldin.
-        logging.debug("Bắt đầu tính Davies-Bouldin")
+        # Lấy mẫu 1000 điểm nếu dữ liệu lớn hơn
+        n = len(X)
+        if n > 1000:
+            indices = np.random.choice(n, size=1000, replace=False)
+            X = X[indices]
+            labels = labels[indices]
         
-        # Comment: Kiểm tra số cụm, cần ít nhất 2 cụm để tính Davies-Bouldin.
         if len(np.unique(labels)) < 2:
-            logging.warning("Số cụm không hợp lệ để tính Davies-Bouldin")
             return float('inf')
         
-        # Comment: Tính chỉ số Davies-Bouldin bằng `sklearn.metrics.davies_bouldin_score`.
-        # - Tham số `centroids`, `q`, `t` không được sử dụng vì dùng `sklearn`.
         db = davies_bouldin_score(X, labels)
-        logging.debug(f"Davies-Bouldin: {db}")
-        
-        # Comment: Kiểm tra giá trị hợp lệ, trả về vô cực nếu không hợp lệ.
         return db if np.isfinite(db) else float('inf')
-    except Exception as e:
-        # Comment: Xử lý lỗi nếu tính toán thất bại.
-        logging.error(f"Lỗi tính Davies-Bouldin: {str(e)}")
+    except Exception:
         return float('inf')
 
 def starczewski_index(X, labels, centroids):
-    """
-    Tính toán chỉ số Starczewski (STR).
-    Giá trị lớn nhất là tối ưu.
-    Chỉ tính E(k) và D(k) tại k hiện tại.
-    """
+    """Tính toán chỉ số Starczewski (STR) với tối đa 100 điểm."""
     try:
-        # Comment: Ghi log bắt đầu tính toán chỉ số Starczewski.
-        logging.debug("Bắt đầu tính Starczewski")
+        # Lấy mẫu 100 điểm nếu dữ liệu lớn hơn
+        n = len(X)
+        if n > 100:
+            indices = np.random.choice(n, size=100, replace=False)
+            X = X[indices]
+            labels = labels[indices]
         
-        # Comment: Kiểm tra số cụm, cần ít nhất 2 cụm để tính Starczewski.
         if len(np.unique(labels)) < 2:
-            logging.warning("Số cụm không hợp lệ để tính Starczewski")
             return 0.0
         
         k = len(np.unique(labels))
         
-        # Comment: Tính D(k): Tỷ lệ giữa khoảng cách lớn nhất và nhỏ nhất giữa các trung tâm cụm.
-        # - Sử dụng `pdist` để tính khoảng cách giữa các trung tâm cụm.
+        # Tính D(k)
         centroid_dists = pdist(centroids)
         max_dist = np.max(centroid_dists)
         min_dist = np.min(centroid_dists)
-        if min_dist == 0:
-            D_k = 0.0
-        else:
-            D_k = max_dist / min_dist
+        D_k = max_dist / min_dist if min_dist > 0 else 0.0
         
-        # Comment: Tính E(k): Tỷ lệ giữa tổng khoảng cách từ các điểm đến trung tâm toàn bộ và tổng khoảng cách trong cụm.
-        v_0 = np.mean(X, axis=0)  # Trung tâm toàn bộ tập dữ liệu
+        # Tính E(k)
+        v_0 = np.mean(X, axis=0)
         num = np.sum(np.linalg.norm(X - v_0, axis=1))
         den = 0.0
         for j in range(k):
             points = X[labels == j]
             if len(points) > 0:
                 den += np.sum(np.linalg.norm(points - centroids[j], axis=1))
-        if den == 0:
-            logging.warning("Denominator bằng 0, trả về Starczewski mặc định")
-            E_k = 0.0
-        else:
-            E_k = num / den
         
-        # Comment: Tính chỉ số Starczewski: D(k) * E(k).
-        str_idx = E_k * D_k
-        logging.debug(f"Starczewski: {str_idx}")
-        return str_idx
-    except Exception as e:
-        # Comment: Xử lý lỗi nếu tính toán thất bại.
-        logging.error(f"Lỗi tính Starczewski: {str(e)}")
+        E_k = num / den if den > 0 else 0.0
+        return E_k * D_k
+    except Exception:
         return 0.0
 
 def wiroonsri_index(X, labels, centroids):
-    """
-    Tính toán chỉ số Wiroonsri (WI) bằng cách lấy mẫu ngẫu nhiên - Phiên bản tối ưu.
-    Giá trị lớn nhất là tối ưu.
-    Chỉ tính NC(k) tại k hiện tại.
-    """
+    """Tính toán chỉ số Wiroonsri (WI) với tối đa 100 điểm."""
     try:
-        # Comment: Ghi log bắt đầu tính toán chỉ số Wiroonsri.
-        logging.debug("Bắt đầu tính Wiroonsri")
+        # Lấy mẫu 100 điểm nếu dữ liệu lớn hơn
+        n = len(X)
+        if n > 100:
+            indices = np.random.choice(n, size=100, replace=False)
+            X_sample = X[indices]
+            labels_sample = labels[indices]
+        else:
+            X_sample = X
+            labels_sample = labels
         
-        # Comment: Kiểm tra số cụm, cần ít nhất 2 cụm để tính Wiroonsri.
         if len(np.unique(labels)) < 2:
-            logging.warning("Số cụm không hợp lệ để tính Wiroonsri")
             return 0.0
         
-        # Tối ưu hóa: Giảm sample size để tăng tốc độ
-        n = len(X)
-        if n < 1000:
-            sample_size = n
-        else:
-            sample_size = min(1000, n)  # Giảm từ 2000 xuống 1000
-        
-        # Comment: Lấy mẫu ngẫu nhiên các điểm và nhãn tương ứng.
-        indices = np.random.choice(n, size=sample_size, replace=False)
-        X_sample = X[indices]
-        labels_sample = labels[indices]
-        
-        # Tối ưu hóa: Sử dụng numpy operations nhanh hơn
-        # Comment: Tính vector `d`: Khoảng cách giữa các cặp điểm trong mẫu.
+        # Tính vector d và c
         d = pdist(X_sample)
-        
-        # Comment: Tính vector `c(k)`: Khoảng cách giữa các trung tâm cụm tương ứng với các cặp điểm.
-        # Tối ưu hóa: Vectorized computation thay vì nested loops
         n_pairs = len(d)
         c = np.zeros(n_pairs)
         
         pair_idx = 0
-        for i in range(sample_size):
-            for j in range(i + 1, sample_size):
+        for i in range(len(X_sample)):
+            for j in range(i + 1, len(X_sample)):
                 c[pair_idx] = np.linalg.norm(centroids[labels_sample[i]] - centroids[labels_sample[j]])
                 pair_idx += 1
         
-        # Comment: Tính NC(k): Hệ số tương quan giữa `d` và `c(k)`.
-        # Tối ưu hóa: Kiểm tra nhanh và an toàn hơn
+        # Tính NC(k)
         std_d = np.std(d)
         std_c = np.std(c)
         
         if std_d == 0 or std_c == 0:
-            logging.warning("Độ lệch chuẩn của d hoặc c bằng 0, trả về Wiroonsri mặc định")
             nc_k = 0.0
         else:
             nc_k = np.corrcoef(d, c)[0, 1]
             if np.isnan(nc_k):
                 nc_k = 0.0
         
-        # Comment: Tính NC(1): Độ chuẩn hóa của độ lệch chuẩn `d`.
+        # Tính NC(1)
         if std_d == 0:
-            logging.warning("Độ lệch chuẩn của d bằng 0, trả về NC(1) mặc định")
             nc_1 = 0.0
         else:
             d_range = np.max(d) - np.min(d)
             nc_1 = std_d / d_range if d_range > 0 else 0.0
         
-        # Comment: Tính chỉ số Wiroonsri: Lấy giá trị lớn hơn giữa `nc_k` và `nc_1`.
-        wi = max(nc_k, nc_1)
-        logging.debug(f"Wiroonsri: {wi}")
-        return wi
-    except Exception as e:
-        # Comment: Xử lý lỗi nếu tính toán thất bại.
-        logging.error(f"Lỗi tính Wiroonsri: {str(e)}")
+        return max(nc_k, nc_1)
+    except Exception:
         return 0.0
 
-def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False):
+def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False, use_pca=True):
     """
     Gợi ý số k tối ưu dựa trên các chỉ số CVI và biểu đồ Elbow.
     
@@ -247,6 +164,9 @@ def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False):
     use_wiroonsri_starczewski : bool, optional
         Nếu True, sử dụng Wiroonsri và Starczewski để gợi ý số cụm tối ưu
         Nếu False, sử dụng Silhouette và Elbow để gợi ý số cụm tối ưu
+    use_pca : bool, optional
+        Nếu True, dùng PCA làm phương pháp giảm chiều
+        Nếu False, dùng trực tiếp các features được chọn
         
     Returns:
     --------
@@ -257,7 +177,7 @@ def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False):
             Lý do gợi ý số cụm tối ưu
     """
     # Comment: Ghi log bắt đầu hàm gợi ý số cụm tối ưu.
-    logging.debug(f"Bắt đầu suggest_optimal_k, use_wiroonsri_starczewski={use_wiroonsri_starczewski}")
+    logging.debug(f"Bắt đầu suggest_optimal_k, use_wiroonsri_starczewski={use_wiroonsri_starczewski}, use_pca={use_pca}")
     
     # Comment: Khởi tạo biến để lưu kết quả.
     # - `optimal_k`: Số cụm tối ưu (mặc định là giá trị nhỏ nhất trong `k_range`).
@@ -431,3 +351,174 @@ def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False):
     # Comment: Ghi log giá trị `k` tối ưu và trả về kết quả.
     logging.debug(f"Optimal k: {optimal_k}")
     return optimal_k, "\n".join(reasoning)
+
+def evaluate_cluster_indices_parallel(X, max_k, models=('KMeans', 'GMM', 'Hierarchical', 'FuzzyCMeans'), max_workers=None):
+    """
+    Đánh giá nhiều mô hình phân cụm với nhiều giá trị k đồng thời sử dụng đa luồng.
+    
+    Args:
+        X (ndarray): Dữ liệu đầu vào
+        max_k (int): Giá trị k tối đa để thử
+        models (tuple): Danh sách các mô hình cần đánh giá
+        max_workers (int): Số luồng tối đa. Nếu None, sẽ sử dụng số lõi CPU
+        
+    Returns:
+        dict: Kết quả đánh giá cho tất cả các mô hình và giá trị k
+    """
+    from sklearn.cluster import KMeans, AgglomerativeClustering
+    from sklearn.mixture import GaussianMixture
+    import skfuzzy as fuzz
+    
+    logging.debug(f"Bắt đầu đánh giá song song cho {len(models)} mô hình và k từ 2 đến {max_k}")
+    
+    # Tạo các task cần chạy (mô hình x k)
+    tasks = []
+    for model_name in models:
+        for k in range(2, max_k + 1):
+            tasks.append((model_name, k))
+    
+    # Xác định số luồng tối đa
+    if max_workers is None:
+        import multiprocessing
+        max_workers = multiprocessing.cpu_count()
+    max_workers = min(max_workers, len(tasks))
+    
+    results = {}
+    for model_name in models:
+        results[model_name] = {}
+    
+    def run_single_model(task):
+        """Chạy một mô hình với một giá trị k"""
+        model_name, k = task
+        try:
+            logging.debug(f"Đánh giá {model_name} với k={k}")
+            
+            if model_name == 'KMeans':
+                model = KMeans(n_clusters=k, n_init=3, max_iter=100, random_state=42)
+                labels = model.fit_predict(X)
+                centroids = model.cluster_centers_
+                inertia = model.inertia_
+            elif model_name == 'GMM':
+                model = GaussianMixture(n_components=k, n_init=3, max_iter=50, random_state=42)
+                labels = model.fit_predict(X)
+                centroids = model.means_
+                inertia = None
+            elif model_name == 'Hierarchical':
+                model = AgglomerativeClustering(n_clusters=k, linkage='ward')
+                labels = model.fit_predict(X)
+                centroids = np.array([X[labels == i].mean(axis=0) for i in range(k)])
+                inertia = None
+            elif model_name == 'FuzzyCMeans':
+                try:
+                    cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(
+                        X.T, k, m=1.5, error=0.1, maxiter=150, init=None, seed=42
+                    )
+                    labels = np.argmax(u, axis=0)
+                    centroids = cntr
+                    # Tính inertia cho FCM
+                    distances = np.linalg.norm(X[:, np.newaxis] - centroids, axis=2) ** 2
+                    inertia = np.sum((u.T ** 2) * distances)
+                except Exception as e:
+                    logging.error(f"Lỗi Fuzzy C-Means với k={k}: {str(e)}")
+                    return model_name, k, None
+            
+            # Tính các chỉ số đánh giá
+            if len(np.unique(labels)) > 1:
+                silhouette = silhouette_score(X, labels)
+                calinski = calinski_harabasz_score(X, labels)
+                davies = davies_bouldin_score(X, labels)
+                starczewski = starczewski_index(X, labels, centroids)
+                wiroonsri = wiroonsri_index(X, labels, centroids)
+            else:
+                silhouette = 0
+                calinski = 0
+                davies = float('inf')
+                starczewski = 0
+                wiroonsri = 0
+            
+            return model_name, k, {
+                'labels': labels,
+                'centroids': centroids,
+                'silhouette': silhouette,
+                'calinski': calinski,
+                'davies': davies,
+                'starczewski': starczewski,
+                'wiroonsri': wiroonsri,
+                'inertia': inertia
+            }
+        except Exception as e:
+            logging.error(f"Lỗi khi đánh giá {model_name} với k={k}: {str(e)}")
+            return model_name, k, None
+    
+    # Chạy các task đồng thời
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_results = list(executor.map(run_single_model, tasks))
+        
+    # Xử lý kết quả
+    for result in future_results:
+        if result is not None:
+            model_name, k, data = result
+            if data is not None:
+                results[model_name][k] = data
+    
+    logging.debug(f"Hoàn thành đánh giá song song")
+    return results
+
+def suggest_optimal_k_parallel(model_results, use_wiroonsri_starczewski=True, max_workers=None):
+    """
+    Gợi ý giá trị k tối ưu cho nhiều mô hình song song
+    
+    Args:
+        model_results (dict): Từ điển chứa kết quả của các mô hình
+        use_wiroonsri_starczewski (bool): Có ưu tiên chỉ số Wiroonsri và Starczewski không
+        max_workers (int): Số luồng tối đa
+    
+    Returns:
+        dict: Gợi ý k tối ưu cho mỗi mô hình {'model_name': {'k': optimal_k, 'reasoning': reasoning}}
+    """
+    logging.debug(f"Bắt đầu gợi ý k tối ưu song song cho {len(model_results['models'])} mô hình")
+    
+    if 'models' not in model_results or not model_results['models']:
+        logging.error("Không có mô hình nào được chạy")
+        return {}      # Xác định số luồng tối đa - tăng lên tối đa 3 luồng
+    if max_workers is None:
+        import multiprocessing
+        max_workers = min(3, multiprocessing.cpu_count())
+    max_workers = min(max_workers, len(model_results['models']), 3)  # Tăng giới hạn lên 3 luồng
+    
+    suggestions = {}
+    
+    def process_model(model_name):
+        """Xử lý một mô hình và trả về gợi ý k tối ưu"""
+        try:
+            plots = model_results['plots'].get(model_name, {})
+            if not plots:
+                logging.warning(f"Không tìm thấy dữ liệu cho mô hình {model_name}")
+                return model_name, None, "Không tìm thấy dữ liệu"
+            
+            optimal_k, reasoning = suggest_optimal_k(
+                plots=plots,
+                k_range=model_results['k_range'],
+                use_wiroonsri_starczewski=use_wiroonsri_starczewski
+            )
+            
+            return model_name, optimal_k, reasoning
+        except Exception as e:
+            logging.error(f"Lỗi khi gợi ý k tối ưu cho {model_name}: {str(e)}")
+            return model_name, 3, f"Lỗi: {str(e)}"
+    
+    # Chạy gợi ý song song cho mỗi mô hình
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_results = list(executor.map(process_model, model_results['models']))
+    
+    # Xử lý kết quả
+    for result in future_results:
+        model_name, optimal_k, reasoning = result
+        suggestions[model_name] = {
+            'k': optimal_k,
+            'reasoning': reasoning,
+            'method': 'wiroonsri_starczewski' if use_wiroonsri_starczewski else 'traditional'
+        }
+    
+    logging.debug(f"Hoàn thành gợi ý k tối ưu song song")
+    return suggestions

@@ -1,0 +1,847 @@
+{% extends "base_dashkit.html" %}
+
+{% block title %}Phân Tích Đặc Trưng Cụm | Dashboard Phân Cụm{% endblock %}
+
+{% block header %}Phân Tích Đặc Trưng Cụm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cluster-card {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .cluster-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }    
+    .feature-badge {
+        font-size: 0.85em;
+        padding: 4px 8px;
+        margin: 2px;
+        border-radius: 6px;
+    }
+    .significance-high { background-color: #dc3545; color: white; }
+    .significance-medium { background-color: #fd7e14; color: white; }
+    .significance-low { background-color: #6c757d; color: white; }
+    .trend-up { color: #198754; }
+    .trend-down { color: #dc3545; }
+    .pca-card {
+        transition: all 0.3s ease;
+        border: none !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .pca-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    .pca-component {
+        font-weight: 600;
+        background: linear-gradient(90deg, #f8f9fa, #e9ecef);
+        border-left: 4px solid #0d6efd;
+    }
+    /* Bảng đặc trưng gốc */
+    .original-features-table {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .original-features-table thead {
+        background: linear-gradient(135deg, #4e73df, #224abe);
+        color: white;
+    }
+    .original-features-table th {
+        font-weight: 600;
+        padding: 12px 15px;
+    }
+    .original-features-table td {
+        padding: 10px 15px;
+    }
+    .original-features-table tr:hover {
+        background-color: rgba(0,123,255,0.05);
+    }
+    .feature-highlight {
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    .feature-highlight:hover {
+        transform: translateX(2px);
+    }
+    .cluster-summary {
+        font-size: 1.1em;
+        line-height: 1.6;
+        padding: 15px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 8px;
+        border-left: 4px solid #0d6efd;
+    }
+    .feature-detail {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 10px;
+        margin: 5px 0;
+        border-left: 3px solid #6c757d;
+        transition: all 0.3s ease;
+    }
+    .feature-detail:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+    .feature-detail.high-impact {
+        border-left-color: #dc3545;
+        background: rgba(220, 53, 69, 0.05);
+    }
+    .feature-detail.medium-impact {
+        border-left-color: #fd7e14;
+        background: rgba(253, 126, 20, 0.05);
+    }
+    .comparison-table {
+        font-size: 0.9em;
+    }
+    .comparison-table th {
+        background: linear-gradient(135deg, #495057 0%, #6c757d 100%);
+        color: white;
+        font-weight: 600;
+        text-align: center;
+        padding: 10px;
+        font-size: 0.85em;
+    }
+    .comparison-table td {
+        text-align: center;
+        padding: 8px;
+        vertical-align: middle;
+    }
+    .cluster-size-indicator {
+        width: 100%;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .cluster-size-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.8s ease;
+    }
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .analysis-form {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 12px;
+        padding: 20px;
+    }
+    .model-suggestions {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3">
+        <!-- Card: Quy trình -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-tasks me-2 text-primary"></i>Quy Trình
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">1</span> Tải dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">2</span> Xem dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">3</span> Xử lý dữ liệu
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">4</span> Chọn mô hình
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <span class="badge rounded-pill bg-success me-2">5</span> Phân tích BCVI
+                        <i class="fas fa-check-circle text-success ms-auto"></i>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center active">
+                        <span class="badge rounded-pill bg-primary me-2">6</span> <strong>Phân tích cụm</strong>
+                        <i class="fas fa-arrow-right text-primary ms-auto"></i>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Card: Thông tin phân tích -->
+        {% if data.cluster_analysis and data.cluster_analysis.analysis %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle me-2 text-info"></i>Thông Tin Phân Tích
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Mô hình
+                        <span class="badge bg-primary rounded-pill">{{ data.cluster_analysis.selected_model }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Số cụm
+                        <span class="badge bg-success rounded-pill">{{ data.cluster_analysis.selected_k }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Tổng mẫu
+                        <span class="badge bg-info rounded-pill">{{ data.cluster_analysis.total_samples }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Dữ liệu
+                        <span class="badge bg-secondary rounded-pill">
+                            {% if data.use_pca %}PCA{% else %}Gốc{% endif %}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Card: Điều hướng -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-navigation me-2 text-secondary"></i>Điều hướng
+                </h5>
+            </div>            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('bcvi') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-arrow-left me-2"></i>Quay lại BCVI
+                    </a>
+                    <a href="{{ url_for('select_model') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-cogs me-2"></i>Chọn mô hình khác
+                    </a>
+                    <a href="{{ url_for('dashkit_index') }}" class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-home me-2"></i>Trang chủ
+                    </a>
+                    
+                    <!-- Nút Clear Cache -->
+                    <hr class="my-2">
+                    <form method="POST" style="margin: 0;" onsubmit="return confirm('Bạn có chắc muốn xóa cache phân tích cụm? Điều này sẽ bắt buộc tính toán lại từ đầu.')">
+                        <input type="hidden" name="action" value="clear_cache">
+                        <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+                            <i class="fas fa-trash-alt me-2"></i>Xóa Cache
+                        </button>
+                    </form>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Xóa cache nếu kết quả không cập nhật với dữ liệu mới
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-9">
+        <!-- Card: Chọn mô hình và k để phân tích -->
+        {% if not data.cluster_analysis or not data.cluster_analysis.analysis %}
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title">
+                    <i class="fas fa-search me-2 text-primary"></i>Chọn Mô Hình và Số Cụm để Phân Tích
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="analysis-form">
+                    <form method="post" id="clusterAnalysisForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Chọn mô hình:</label>
+                                <select class="form-select" name="model" id="modelSelect" required>
+                                    <option value="">-- Chọn mô hình --</option>
+                                    {% for model in data.models %}
+                                    <option value="{{ model }}">{{ model }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle text-info"></i> 
+                                    Chọn một trong {{ data.models|length }} mô hình đã được huấn luyện
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Số cụm (k):</label>
+                                <select class="form-select" name="k" id="kSelect" required>
+                                    {% for k in range(2, 11) %}
+                                    <option value="{{ k }}" {% if k == 4 %}selected{% endif %}>{{ k }} cụm</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-lightbulb text-warning"></i> 
+                                    Gợi ý: Sử dụng k tối ưu từ BCVI bên dưới
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Hiển thị gợi ý k từ BCVI -->
+                        {% if data.optimal_k %}
+                        <div class="model-suggestions">
+                            <h6 class="mb-3">
+                                <i class="fas fa-brain me-2 text-success"></i>
+                                Gợi ý k tối ưu từ BCVI:
+                            </h6>
+                            <div class="row">
+                                {% for model, optimal_ks in data.optimal_k.items() %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="card border-success">
+                                        <div class="card-body p-3">
+                                            <h6 class="card-title text-success mb-2">
+                                                <i class="fas fa-robot me-1"></i>{{ model }}
+                                            </h6>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% for cvi_type, k_val in optimal_ks.items() %}
+                                                <span class="badge bg-success suggestion-badge" 
+                                                      data-model="{{ model }}" 
+                                                      data-k="{{ k_val }}"
+                                                      style="cursor: pointer;"
+                                                      title="Nhấp để chọn {{ model }} với k={{ k_val }}">
+                                                    {{ cvi_type }}: k={{ k_val }}
+                                                </span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="alert alert-info mt-3 mb-0">
+                                <i class="fas fa-mouse-pointer me-2"></i>
+                                <small><strong>Mẹo:</strong> Nhấp vào badge để tự động chọn mô hình và k tương ứng</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg" id="analyzeBtn">
+                                <i class="fas fa-chart-bar me-2"></i>Phân Tích Đặc Trưng Cụm
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Kết quả phân tích -->
+        {% if data.cluster_analysis and data.cluster_analysis.analysis %}
+        <div class="card mb-4">
+            <div class="card-header bg-gradient bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Kết Quả Phân Tích Đặc Trưng Cụm
+                </h5>
+                <small class="opacity-75">
+                    Mô hình: {{ data.cluster_analysis.selected_model }} | 
+                    K = {{ data.cluster_analysis.selected_k }} | 
+                    Tổng mẫu: {{ data.cluster_analysis.total_samples }}
+                </small>
+            </div>
+            <div class="card-body">
+                <!-- Tổng quan về các cụm -->
+                <div class="row mb-4">
+                    {% for cluster_id, cluster_info in data.cluster_analysis.analysis.items() %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card cluster-card border-primary">
+                            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-layer-group me-2"></i>Cụm {{ cluster_id }}
+                                </h6>
+                                <span class="badge bg-light text-dark">{{ cluster_info.size }} mẫu</span>
+                            </div>
+                            <div class="card-body">
+                                <!-- Thanh chỉ thị kích thước cụm -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="small">Tỷ lệ trong tổng thể</span>
+                                        <span class="small fw-bold">{{ cluster_info.percentage|round(1) }}%</span>
+                                    </div>
+                                    <div class="cluster-size-indicator">
+                                        <div class="cluster-size-bar bg-primary" 
+                                             style="width: {{ cluster_info.percentage }}%; background: linear-gradient(90deg, #0d6efd, #198754);"
+                                             data-width="{{ cluster_info.percentage }}%"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Mô tả tổng quan -->
+                                <div class="cluster-summary">
+                                    <i class="fas fa-info-circle me-2 text-primary"></i>
+                                    {{ cluster_info.summary }}
+                                </div>
+                                
+                                <!-- Top 3 features đặc trưng -->
+                                <h6 class="mt-3 mb-2">
+                                    <i class="fas fa-star me-2 text-warning"></i>Đặc trưng nổi bật:
+                                </h6>
+                                {% for feature in cluster_info.distinctive_features[:3] %}
+                                <div class="feature-detail {% if feature.significance == 'Rất cao' %}high-impact{% elif feature.significance == 'Cao' %}medium-impact{% endif %}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold">{{ feature.feature }}</span>
+                                        <div>
+                                            <span class="feature-badge {% if feature.significance == 'Rất cao' %}significance-high{% elif feature.significance == 'Cao' %}significance-medium{% else %}significance-low{% endif %}">
+                                                {{ feature.significance }}
+                                            </span>
+                                            <span class="{% if feature.trend == 'cao hơn' %}trend-up{% else %}trend-down{% endif %}">
+                                                {{ feature.trend_icon }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        {{ feature.description }}
+                                    </div>
+                                    <div class="small">
+                                        <strong>Trung bình cụm:</strong> {{ feature.cluster_mean|round(2) }} | 
+                                        <strong>Trung bình chung:</strong> {{ feature.overall_mean|round(2) }}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Chi tiết từng cụm -->
+                <h5 class="mb-3">
+                    <i class="fas fa-list-alt me-2"></i>Chi Tiết Từng Cụm
+                </h5>
+                
+                <!-- Tabs cho từng cụm -->
+                <ul class="nav nav-tabs" id="clusterTabs" role="tablist">
+                    {% for cluster_id in data.cluster_analysis.analysis.keys() %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                id="cluster{{ cluster_id }}-tab" data-bs-toggle="tab" 
+                                data-bs-target="#cluster{{ cluster_id }}" type="button" role="tab">
+                            Cụm {{ cluster_id }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <div class="tab-content mt-4" id="clusterTabsContent">
+                    {% for cluster_id, cluster_info in data.cluster_analysis.analysis.items() %}
+                    <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                         id="cluster{{ cluster_id }}" role="tabpanel">
+                        
+                        <!-- Thống kê cơ bản -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h4 class="text-info">{{ cluster_info.size }}</h4>
+                                        <p class="mb-0">Số phần tử</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-success">
+                                    <div class="card-body text-center">
+                                        <h4 class="text-success">{{ cluster_info.percentage|round(1) }}%</h4>
+                                        <p class="mb-0">Tỷ lệ</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-warning">
+                                    <div class="card-body text-center">
+                                        <h4 class="text-warning">{{ cluster_info.distinctive_features|length }}</h4>
+                                        <p class="mb-0">Features đặc trưng</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>                <!-- Danh sách tất cả features đặc trưng -->
+                        <h6 class="mb-3">
+                            <i class="fas fa-list me-2"></i>{% if data.cluster_analysis.used_pca_for_clustering %}Đặc Trưng Gốc Của Cụm{% else %}Tất Cả Features Đặc Trưng{% endif %}
+                        </h6>
+                        <div class="alert alert-info mb-3" {% if not data.cluster_analysis.used_pca_for_clustering %}style="display:none"{% endif %}>
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Lưu ý:</strong> Đây là các đặc trưng gốc (không phải PC components) có sự khác biệt rõ nhất trong cụm này.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Feature</th>
+                                        <th>Trung bình cụm</th>
+                                        <th>Trung bình chung</th>
+                                        <th>Xu hướng</th>
+                                        <th>Mức độ đặc trưng</th>
+                                        <th>Mô tả</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for feature in cluster_info.distinctive_features %}
+                                    <tr>
+                                        <td><strong>{{ feature.feature }}</strong></td>
+                                        <td>{{ feature.cluster_mean|round(2) }}</td>
+                                        <td>{{ feature.overall_mean|round(2) }}</td>
+                                        <td>
+                                            <span class="{% if feature.trend == 'cao hơn' %}text-success{% else %}text-danger{% endif %}">
+                                                {{ feature.trend_icon }} {{ feature.trend }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if feature.significance == 'Rất cao' %}bg-danger{% elif feature.significance == 'Cao' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                                {{ feature.significance }}
+                                            </span>
+                                        </td>
+                                        <td class="small">{{ feature.description }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Features ổn định -->
+                        {% if cluster_info.stable_features %}
+                        <h6 class="mt-4 mb-3">
+                            <i class="fas fa-balance-scale me-2"></i>Features Ổn Định Nhất
+                        </h6>
+                        <div class="row">
+                            {% for stable in cluster_info.stable_features %}
+                            <div class="col-md-6 mb-2">
+                                <div class="alert alert-info p-2 mb-1">
+                                    <strong>{{ stable.feature }}:</strong> 
+                                    Trung bình {{ stable.mean|round(2) }}, độ lệch chuẩn {{ stable.std|round(3) }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>                <!-- Bảng so sánh giữa các cụm (theo PC components) -->
+                <!-- Được ẩn đi khi dùng PCA để ưu tiên hiển thị bảng đặc trưng gốc bên dưới -->
+                {% if data.cluster_analysis.comparison_table and not data.cluster_analysis.used_pca_for_clustering %}
+                <div class="mt-5">
+                    <h5 class="mb-3">
+                        <i class="fas fa-table me-2"></i>Bảng So Sánh Giữa Các Cụm</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped comparison-table">
+                            <thead>
+                                <tr>
+                                    {% for key in data.cluster_analysis.comparison_table[0].keys() %}
+                                    <th>{{ key }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in data.cluster_analysis.comparison_table %}
+                                <tr>
+                                    {% for value in row.values() %}
+                                    <td>{{ value }}</td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                  <!-- Bảng đặc trưng gốc của từng cụm - Luôn hiển thị khi dùng PCA -->
+                {% if data.cluster_analysis.reconstructed_clusters and data.cluster_analysis.reconstructed_clusters.comparison_table %}
+                <div class="mt-5">
+                    <h5 class="mb-3">
+                        <i class="fas fa-chart-bar me-2 text-primary"></i>
+                        <span class="text-primary fw-bold">Phân Tích Đặc Trưng Gốc Giữa Các Cụm</span>
+                    </h5>
+                      <div class="alert alert-success shadow-sm">
+                        <div class="d-flex">
+                            <div class="me-3 fs-3"><i class="fas fa-lightbulb text-warning"></i></div>
+                            <div>
+                                <h5 class="alert-heading">Phân tích đặc trưng gốc</h5>
+                                <p class="mb-0">
+                                {% if data.cluster_analysis.used_pca_for_clustering %}
+                                <span class="fw-bold">Đây là kết quả quan trọng nhất:</span> Bảng này hiển thị <strong>trực tiếp các đặc trưng gốc</strong> trong mỗi cụm (không phải các giá trị PCA), giúp bạn dễ dàng hiểu các đặc trưng gốc hoạt động trong từng cụm. <strong>Chỉ hiển thị các đặc trưng có sự khác biệt rõ rệt nhất giữa các cụm</strong> (tối đa 30 đặc trưng).
+                                {% else %}
+                                Bảng này hiển thị cách các đặc trưng gốc hoạt động trong từng cụm, giúp bạn hiểu sâu hơn về đặc điểm của mỗi cụm. <strong>Đã được sắp xếp để hiển thị các đặc trưng có sự khác biệt rõ rệt nhất giữa các cụm</strong> (tối đa 30 đặc trưng).
+                                {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                      <div class="table-responsive mb-4">
+                        <table class="table table-striped table-bordered table-hover">
+                            <thead class="bg-primary text-white">
+                                <tr>
+                                    {% for key in data.cluster_analysis.reconstructed_clusters.comparison_table[0].keys() %}
+                                    <th>{{ key }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in data.cluster_analysis.reconstructed_clusters.comparison_table %}
+                                <tr>
+                                    <td class="fw-bold text-primary">{{ row.Feature }}</td>
+                                    {% for key, value in row.items() %}
+                                        {% if key != 'Feature' %}
+                                            {% if 'Cao nhất' in key %}
+                                                <td class="text-success fw-bold">{{ value }}</td>
+                                            {% elif 'Thấp nhất' in key %}
+                                                <td class="text-danger fw-bold">{{ value }}</td>
+                                            {% elif 'Chênh lệch' in key %}
+                                                <td class="text-primary fw-bold">{{ value }}</td>
+                                            {% elif 'Cụm' in key %}
+                                                <td class="text-dark">{{ value }}</td>
+                                            {% else %}
+                                                <td>{{ value }}</td>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                      <div class="card bg-light shadow-sm border-0">
+                        <div class="card-body">
+                            <h6 class="card-title d-flex align-items-center mb-3">
+                                <span class="bg-info text-white p-2 rounded-circle me-2"><i class="fas fa-info"></i></span>
+                                <span>Hướng dẫn đọc bảng</span>
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul class="mb-0">
+                                        <li class="mb-2"><span class="fw-bold text-primary">Feature</span>: Tên đặc trưng gốc đã được sử dụng</li>
+                                        <li class="mb-2"><span class="fw-bold">Cụm X</span>: Giá trị trung bình của đặc trưng trong cụm</li>
+                                        <li class="mb-2"><span class="fw-bold text-success">Cao nhất</span>: Cụm có giá trị cao nhất cho đặc trưng này</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="mb-0">
+                                        <li class="mb-2"><span class="fw-bold text-danger">Thấp nhất</span>: Cụm có giá trị thấp nhất cho đặc trưng này</li>
+                                        <li class="mb-2"><span class="fw-bold text-primary">Chênh lệch</span>: Độ chênh lệch giữa giá trị cao nhất và thấp nhất</li>
+                                        <li><small class="text-muted">Bảng được sắp xếp theo độ chênh lệch từ cao xuống thấp</small></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}<!-- Thông tin về các thành phần chính (PCA) - ẩn mặc định, chỉ hiển thị khi click nút xem chi tiết -->
+                {% if data.cluster_analysis.used_pca_for_clustering and data.cluster_analysis.pca_component_info %}
+                <div class="mt-5">
+                    <!-- Button hiển thị/ẩn thông tin PCA -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-project-diagram me-2 text-secondary"></i>Chi Tiết Các Thành Phần Chính (PCA)
+                        </h5>
+                        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#pcaDetailsCollapse" aria-expanded="false" aria-controls="pcaDetailsCollapse">
+                            <i class="fas fa-eye me-1"></i> Xem Chi Tiết PCA
+                        </button>
+                    </div>
+                    
+                    <!-- Nội dung chi tiết PCA - ẩn mặc định -->
+                    <div class="collapse" id="pcaDetailsCollapse">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Lưu ý:</strong> Các thành phần chính (PC) được tạo từ kết hợp các đặc trưng gốc. Dưới đây là các đặc trưng gốc có ảnh hưởng lớn nhất đến mỗi PC.
+                        </div>
+                        <div class="row">
+                            {% for pc_name, top_features in data.cluster_analysis.pca_component_info.items() %}
+                            <div class="col-md-6 mb-4">
+                                <div class="card h-100 pca-card">
+                                    <div class="card-header bg-gradient bg-light pca-component">
+                                        <h6 class="card-title mb-0">
+                                            <i class="fas fa-cube me-2 text-primary"></i>{{ pc_name }}
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="small text-muted mb-2">Top đặc trưng ảnh hưởng đến {{ pc_name }}:</p>
+                                        <ul class="list-group list-group-flush">
+                                            {% for feature_info in top_features %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>
+                                                    <strong class="{% if feature_info.loading > 0 %}text-success{% else %}text-danger{% endif %}">
+                                                        {{ feature_info.direction }}
+                                                    </strong> 
+                                                    {{ feature_info.feature }}
+                                                </span>
+                                                <span class="badge bg-primary rounded-pill">{{ feature_info.abs_loading|round(3) }}</span>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                        <div class="mt-3 small">
+                                            <p class="text-muted mb-1">
+                                                <i class="fas fa-info-circle me-1"></i> Giá trị càng cao càng có ảnh hưởng lớn
+                                            </p>
+                                            <p class="mb-0">
+                                                <span class="text-success">+</span>: Tương quan thuận
+                                                <span class="mx-2">|</span>
+                                                <span class="text-danger">-</span>: Tương quan nghịch
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Nút phân tích lại -->                <div class="text-center mt-4">
+                    <a href="{{ url_for('cluster_analysis_dashkit') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-redo me-2"></i>Phân tích với mô hình/k khác
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Cluster Analysis page loaded');
+
+        // Hiệu ứng hover cho cluster cards
+        const clusterCards = document.querySelectorAll('.cluster-card');
+        clusterCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+                this.style.boxShadow = '0 10px 30px rgba(0,0,0,0.2)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+            });
+        });
+
+        // Animation cho cluster size bars
+        const sizeBars = document.querySelectorAll('.cluster-size-bar');
+        sizeBars.forEach(bar => {
+            const width = bar.getAttribute('data-width') || bar.style.width;
+            bar.style.width = '0%';
+            setTimeout(() => {
+                bar.style.width = width;
+            }, 500);
+        });
+
+        // Xử lý click vào suggestion badges
+        const suggestionBadges = document.querySelectorAll('.suggestion-badge');
+        suggestionBadges.forEach(badge => {
+            badge.addEventListener('click', function() {
+                const model = this.getAttribute('data-model');
+                const k = this.getAttribute('data-k');
+                
+                const modelSelect = document.getElementById('modelSelect');
+                const kSelect = document.getElementById('kSelect');
+                
+                if (modelSelect && kSelect) {
+                    modelSelect.value = model;
+                    kSelect.value = k;
+                    
+                    // Visual feedback
+                    this.style.transform = 'scale(1.1)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 200);
+                    
+                    // Highlight selected options
+                    modelSelect.style.border = '2px solid #28a745';
+                    kSelect.style.border = '2px solid #28a745';
+                    
+                    setTimeout(() => {
+                        modelSelect.style.border = '';
+                        kSelect.style.border = '';
+                    }, 2000);
+                }
+            });
+
+            // Hover effect for badges
+            badge.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05)';
+                this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+            });
+            
+            badge.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+                this.style.boxShadow = '';
+            });
+        });
+
+        // Form submission handling
+        const form = document.getElementById('clusterAnalysisForm');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        
+        if (form && analyzeBtn) {
+            form.addEventListener('submit', function(e) {
+                // Show loading state
+                analyzeBtn.innerHTML = '<span class="loading-spinner me-2"></span>Đang phân tích...';
+                analyzeBtn.disabled = true;
+                
+                // Create loading overlay
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    z-index: 9999;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    color: white;
+                    font-size: 18px;
+                `;
+                overlay.innerHTML = `
+                    <div class="text-center">
+                        <div class="loading-spinner mb-3" style="width: 40px; height: 40px;"></div>
+                        <div>Đang phân tích đặc trưng cụm...</div>
+                        <small class="opacity-75">Vui lòng đợi trong giây lát</small>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                
+                // Let form submit normally
+            });
+        }
+
+        // Hiệu ứng hover cho feature details
+        const featureDetails = document.querySelectorAll('.feature-detail');
+        featureDetails.forEach(detail => {
+            detail.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateX(5px)';
+            });
+            
+            detail.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateX(0)';
+            });
+        });
+
+        console.log('All cluster analysis interactions initialized');
+    });
+</script>
+{% endblock %}

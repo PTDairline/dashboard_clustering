@@ -97,7 +97,6 @@
                                 <th>Phương pháp</th>
                                 <th>Tham số</th>
                                 <th>Số cụm</th>
-                                <th>Số nhiễu</th>
                                 <th>Silhouette</th>
                                 <th>Calinski-Harabasz</th>
                                 <th>Davies-Bouldin</th>
@@ -120,13 +119,6 @@
                                 </td>
                                 <td>
                                     <span class="badge bg-success">{{ result.n_clusters }}</span>
-                                </td>
-                                <td>
-                                    {% if result.n_noise > 0 %}
-                                        <span class="badge bg-warning">{{ result.n_noise }}</span>
-                                    {% else %}
-                                        <span class="text-muted">{{ result.n_noise }}</span>
-                                    {% endif %}
                                 </td>
                                 <td>{{ "%.3f"|format(result.Silhouette) }}</td>
                                 <td>{{ "%.3f"|format(result.Calinski_Harabasz) }}</td>

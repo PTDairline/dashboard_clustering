@@ -7,11 +7,12 @@ import io
 import base64
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.mixture import GaussianMixture
+from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
-from utils.metrics import starczewski_index, wiroonsri_index
 import skfuzzy as fuzz
 import logging
-from sklearn.decomposition import PCA
+import concurrent.futures  # Thêm concurrent.futures để hỗ trợ đa luồng
+from utils.metrics import starczewski_index, wiroonsri_index
 
 # Comment: Import các thư viện và module cần thiết.
 # - matplotlib: Dùng để vẽ biểu đồ (Silhouette, Elbow, Scatter).
@@ -331,3 +332,106 @@ def generate_clustering_plots(X, model_name, k_range, selected_k, use_pca, selec
         # Comment: Xử lý lỗi nếu quá trình phân cụm hoặc tạo biểu đồ thất bại.
         logging.error(f"Lỗi trong generate_clustering_plots: {str(e)}")
         return {'error': f'Lỗi khi chạy phân cụm: {str(e)}'}
+
+def run_cluster_for_k(X_array, X_plot, k, model_name):
+    """
+    Chạy mô hình phân cụm với số cụm k và trả về kết quả
+    
+    Args:
+        X_array (ndarray): Dữ liệu đầu vào dạng mảng numpy
+        X_plot (ndarray): Dữ liệu chiếu 2D để vẽ biểu đồ scatter
+        k (int): Số cụm
+        model_name (str): Tên mô hình ('KMeans', 'GMM', 'Hierarchical', 'FuzzyCMeans')
+    
+    Returns:
+        dict: Kết quả phân cụm bao gồm labels, centroids, membership và các chỉ số
+    """
+    try:
+        logging.debug(f"Chạy phân cụm với k={k}, model={model_name}")
+        
+        # Khởi tạo và chạy mô hình tương ứng
+        if model_name == 'KMeans':
+            model = KMeans(n_clusters=k, n_init=3, max_iter=100, random_state=42, algorithm='lloyd')
+            labels = model.fit_predict(X_array)
+            centroids = model.cluster_centers_
+            membership = None
+            inertia = model.inertia_
+        elif model_name == 'GMM':
+            model = GaussianMixture(n_components=k, n_init=3, max_iter=50, random_state=42,
+                                  covariance_type='full', warm_start=True)
+            labels = model.fit_predict(X_array)
+            centroids = model.means_
+            membership = model.predict_proba(X_array)
+            inertia = None
+        elif model_name == 'Hierarchical':
+            model = AgglomerativeClustering(n_clusters=k, linkage='ward')
+            labels = model.fit_predict(X_array)
+            centroids = np.array([X_array[labels == i].mean(axis=0) for i in range(k)])
+            membership = None
+            inertia = None
+        elif model_name == 'FuzzyCMeans':
+            try:
+                logging.info(f"Running Fuzzy C-Means with k={k}, shape of X.T: {X_array.T.shape}")
+                cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(
+                    X_array.T, k, m=1.5, error=0.1, maxiter=150, init=None, seed=42
+                )
+                labels = np.argmax(u, axis=0)
+                centroids = cntr
+                membership = u.T
+                # Tính inertia cho FCM
+                distances = np.linalg.norm(X_array[:, np.newaxis] - centroids, axis=2) ** 2
+                inertia = np.sum((u.T ** 2) * distances)
+                logging.debug(f"Fuzzy C-Means completed: fpc={fpc}")
+            except Exception as e:
+                logging.error(f"Lỗi Fuzzy C-Means với k={k}: {str(e)}")
+                return {'error': f'Fuzzy C-Means failed for k={k}: {str(e)}'}
+        else:
+            logging.error(f"Mô hình {model_name} không hỗ trợ")
+            return {'error': f'Mô hình {model_name} không được hỗ trợ.'}
+        
+        # Tính các chỉ số đánh giá cụm (CVI)
+        if len(np.unique(labels)) > 1:
+            silhouette = silhouette_score(X_array, labels)
+            calinski = calinski_harabasz_score(X_array, labels)
+            davies = davies_bouldin_score(X_array, labels)
+        else:
+            silhouette = 0
+            calinski = 0
+            davies = float('inf')
+        
+        # Tính các chỉ số CVI tùy chỉnh
+        starczewski = starczewski_index(X_array, labels, centroids)
+        wiroonsri = wiroonsri_index(X_array, labels, centroids)
+        
+        # Tạo biểu đồ scatter
+        plt.figure(figsize=(5, 3))
+        scatter = plt.scatter(X_plot[:, 0], X_plot[:, 1], c=labels, cmap='viridis', s=15, alpha=0.8)
+        plt.xlabel('Component 1')
+        plt.ylabel('Component 2')
+        plt.title(f'{model_name} (k={k})')
+        plt.tight_layout()
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=80, bbox_inches='tight')
+        buf.seek(0)
+        scatter_plot = base64.b64encode(buf.getvalue()).decode('utf-8')
+        plt.close('all')
+        
+        result = {
+            'k': k,
+            'labels': labels,
+            'centroids': centroids,
+            'membership': membership,
+            'silhouette': silhouette,
+            'calinski': calinski,
+            'davies': davies,
+            'starczewski': starczewski,
+            'wiroonsri': wiroonsri,
+            'inertia': inertia,
+            'scatter_plot': scatter_plot
+        }
+        
+        return result
+    
+    except Exception as e:
+        logging.error(f"Lỗi trong run_cluster_for_k với k={k}, model={model_name}: {str(e)}")
+        return {'error': f'Lỗi khi chạy phân cụm với k={k}: {str(e)}'}
