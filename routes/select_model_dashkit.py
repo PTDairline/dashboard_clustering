@@ -4,10 +4,9 @@ import pandas as pd
 import numpy as np
 import json
 import logging
-from utils.clustering_optimized import generate_clustering_plots, run_multiple_models  # Sử dụng phiên bản tối ưu hóa
-from utils.metrics import suggest_optimal_k, suggest_optimal_k_parallel
+from utils.clustering import generate_clustering_plots
+from utils.metrics import suggest_optimal_k
 import time
-import multiprocessing  # Thêm multiprocessing để xác định số lõi CPU
 
 def select_model_dashkit():
     """Chọn mô hình phân cụm - phiên bản Dashkit"""
@@ -56,106 +55,78 @@ def select_model_dashkit():
                 'optimal_k_suggestions': {}
             }
             
-            start_time = time.time()            # Tối ưu hóa: Preprocessing dữ liệu một lần cho tất cả models
+            start_time = time.time()
+              # Tối ưu hóa: Preprocessing dữ liệu một lần cho tất cả models
             X_array = df_pca.values.astype(float)
-              # Xác định số lõi CPU và cách phân bổ tài nguyên
-            cpu_count = multiprocessing.cpu_count()
-            logging.debug(f"Số lõi CPU khả dụng: {cpu_count}")
-              # CHIẾN LƯỢC TỐI ƯU: 
-            # 1. Chạy song song 2 mô hình
-            # 2. Mỗi mô hình dùng 5 luồng (tổng 10/12 luồng có sẵn)
-            # 3. Để lại 2 luồng cho hệ thống
-
-            # Cấu hình cố định cho máy 6 nhân 12 luồng
-            TOTAL_THREADS = 8  # Tổng số luồng muốn sử dụng
-            PARALLEL_MODELS = 2  # Số mô hình chạy song song
-            THREADS_PER_MODEL = 4  # Số luồng cho mỗi mô hình
-
-            # Số mô hình chạy song song (luôn là 2 hoặc ít hơn nếu chọn ít mô hình)
-            parallel_models = min(len(selected_models), PARALLEL_MODELS)
-
-            # Số luồng cho mỗi mô hình (cố định 5)
-            threads_per_model = THREADS_PER_MODEL
-
-            logging.debug(f"Cấu hình tài nguyên:")
-            logging.debug(f"- Tổng số luồng sử dụng: {TOTAL_THREADS}/12 luồng")
-            logging.debug(f"- Số mô hình chạy song song: {parallel_models}")
-            logging.debug(f"- Số luồng mỗi mô hình: {threads_per_model}")
             
-            # Thời gian bắt đầu xử lý mô hình
-            models_start_time = time.time()
+            # Chạy các mô hình được chọn
+            for model_name in selected_models:
+                try:
+                    logging.debug(f"Processing model: {model_name}")
+                    
+                    # Tối ưu hóa: Sử dụng tham số được tối ưu cho tốc độ
+                    plots = generate_clustering_plots(
+                        X=df_pca,
+                        model_name=model_name,
+                        k_range=results['k_range'],
+                        selected_k=max_k,
+                        use_pca=use_pca,  # Truyền giá trị use_pca đúng
+                        selected_features=list(df_pca.columns),
+                        explained_variance_ratio=0.95
+                    )
+                    
+                    if 'error' in plots:
+                        flash(f"Lỗi khi chạy mô hình {model_name}: {plots['error']}")
+                        continue
+                    
+                    if plots and 'cvi' in plots:
+                        results['models'].append(model_name)
+                        
+                        # Chuyển đổi cvi_scores về format mong muốn
+                        cvi_dict = {}
+                        for cvi_entry in plots['cvi']:
+                            k = str(cvi_entry['k'])
+                            cvi_dict[k] = {
+                                'silhouette': cvi_entry['Silhouette'],
+                                'calinski_harabasz': cvi_entry['Calinski-Harabasz'],
+                                'davies_bouldin': cvi_entry['Davies-Bouldin'],
+                                'starczewski': cvi_entry['Starczewski'],
+                                'wiroonsri': cvi_entry['Wiroonsri']
+                            }
+                        
+                        results['cvi_scores'][model_name] = cvi_dict
+                        results['plots'][model_name] = plots
+                          # Gợi ý k tối ưu - Ưu tiên Silhouette và Elbow (giống code cũ)
+                        try:
+                            optimal_k, reasoning = suggest_optimal_k(
+                                plots=plots,
+                                k_range=results['k_range'],
+                                use_wiroonsri_starczewski=False  # Sử dụng Silhouette + Elbow
+                            )
+                            results['optimal_k_suggestions'][model_name] = {
+                                'k': optimal_k,
+                                'reasoning': reasoning,
+                                'method': 'traditional'  # Đánh dấu đây là phương pháp truyền thống
+                            }
+                            logging.debug(f"Traditional optimal k suggestion for {model_name}: k={optimal_k}")
+                        except Exception as e:
+                            logging.error(f"Error suggesting optimal k for {model_name}: {str(e)}")
+                            results['optimal_k_suggestions'][model_name] = {
+                                'k': 3,
+                                'reasoning': 'Không thể tính toán gợi ý tự động (Silhouette/Elbow)',
+                                'method': 'fallback'
+                            }
+                    else:
+                        flash(f"Không thể chạy mô hình {model_name}. Vui lòng thử lại.")
+                        
+                except Exception as e:
+                    logging.error(f"Error processing model {model_name}: {str(e)}")
+                    flash(f"Lỗi khi chạy mô hình {model_name}: {str(e)}")
             
-            # Chạy song song tất cả các mô hình (cải tiến lớn so với phiên bản trước)
-            results_parallel = run_multiple_models(
-                X=df_pca,
-                models=selected_models,
-                k_range=results['k_range'],
-                selected_k=max_k,
-                use_pca=use_pca,
-                selected_features=list(df_pca.columns),
-                explained_variance_ratio=0.95,
-                max_workers=parallel_models,  # Số mô hình chạy song song
-                threads_per_model=threads_per_model  # Số luồng cho mỗi mô hình
-            )
-            
-            # Thời gian hoàn thành xử lý mô hình
-            models_time = time.time() - models_start_time
-            logging.debug(f"Tất cả mô hình hoàn thành sau {models_time:.2f} giây")
-              # Cập nhật kết quả từ xử lý song song
-            results['models'] = results_parallel['models']
-            results['cvi_scores'] = results_parallel['cvi_scores']
-            results['plots'] = results_parallel['plots']
-            model_times = results_parallel['processing_times']
-              # Xử lý lỗi nếu không có mô hình nào chạy thành công
-            if not results['models']:
-                flash('Không có mô hình nào chạy thành công. Vui lòng kiểm tra dữ liệu.')
-                return redirect(url_for('select_model'))
             processing_time = time.time() - start_time
             logging.debug(f"Total processing time: {processing_time:.2f} seconds")
             
-            # Gợi ý k tối ưu song song cho tất cả mô hình sau khi tất cả đã chạy xong
             if results['models']:
-                try:
-                    logging.debug("Đang gợi ý k tối ưu song song cho tất cả mô hình")
-                      # Giới hạn số luồng cho quá trình gợi ý (tối đa 2)
-                    optimal_suggestion_threads = min(2, max(1, cpu_count // 4))
-                    
-                    # Gợi ý song song sử dụng Wiroonsri và Starczewski
-                    start_suggest_time = time.time()
-                    optimal_k_suggestions = suggest_optimal_k_parallel(
-                        model_results=results,
-                        use_wiroonsri_starczewski=True,
-                        max_workers=optimal_suggestion_threads
-                    )
-                    suggest_time = time.time() - start_suggest_time
-                    
-                    # Cập nhật kết quả với gợi ý mới
-                    results['optimal_k_suggestions'] = optimal_k_suggestions
-                    
-                    # Cập nhật thông tin thời gian xử lý
-                    results['processing_info'] = {
-                        'total_time': processing_time,
-                        'models_time': models_time,
-                        'suggestion_time': suggest_time,
-                        'model_times': model_times,
-                        'parallel_info': {
-                            'models_run_parallel': parallel_models,
-                            'threads_per_model': threads_per_model,
-                            'suggestion_threads': optimal_suggestion_threads
-                        }
-                    }
-                    
-                    logging.debug(f"Hoàn thành gợi ý k tối ưu trong {suggest_time:.2f} giây")
-                except Exception as e:
-                    logging.error(f"Lỗi khi gợi ý k tối ưu song song: {str(e)}")
-                    # Fallback: sử dụng k=3 mặc định nếu có lỗi
-                    for model_name in results['models']:
-                        results['optimal_k_suggestions'][model_name] = {
-                            'k': 3,
-                            'reasoning': f'Lỗi gợi ý tự động: {str(e)}',
-                            'method': 'fallback'
-                        }
-                
                 # Lưu kết quả
                 results_file = os.path.join(current_app.config['UPLOAD_FOLDER'], 'model_results.json')
                 with open(results_file, 'w', encoding='utf-8') as f:

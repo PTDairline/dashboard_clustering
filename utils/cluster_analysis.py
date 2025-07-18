@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import re
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.mixture import GaussianMixture
 import logging
@@ -11,7 +12,7 @@ def analyze_cluster_characteristics(X, labels, feature_names, original_data=None
     Args:
         X: Dữ liệu đã chuẩn hóa (numpy array hoặc DataFrame)
         labels: Nhãn cụm cho từng điểm dữ liệu
-        feature_names: Tên các features (cho dữ liệu clustering)
+        feature_names: Tên các features
         original_data: Dữ liệu gốc chưa chuẩn hóa (để hiển thị giá trị thực)
         top_features: Số lượng features đặc trưng nhất để hiển thị
     
@@ -20,16 +21,16 @@ def analyze_cluster_characteristics(X, labels, feature_names, original_data=None
     """
     try:
         # Kiểm tra dữ liệu đầu vào
-        logging.info(f"analyze_cluster_characteristics - Input shapes: X={X.shape if hasattr(X, 'shape') else 'unknown'}, "
-                      f"labels={len(labels) if labels is not None else 'None'}, feature_names={len(feature_names)}")
+        logging.debug(f"analyze_cluster_characteristics - Input shapes: X={X.shape if hasattr(X, 'shape') else 'unknown'}, "
+                      f"labels={len(labels) if labels is not None else 'None'}, feature_names={len(feature_names)}") 
                  
         # Kiểm tra NaN
         if isinstance(X, np.ndarray) and np.isnan(X).any():
             logging.warning("NaN values found in X, replacing with zeros")
             X = np.nan_to_num(X, nan=0.0)
-        
-        # Chuyển đổi về DataFrame nếu cần (cho clustering data)
+          # Chuyển đổi về DataFrame nếu cần
         if isinstance(X, np.ndarray):
+            # Đảm bảo số lượng feature_names trùng khớp với số cột của X
             if X.shape[1] != len(feature_names):
                 logging.warning(f"Feature names count ({len(feature_names)}) doesn't match X columns ({X.shape[1]}). Using generic names.")
                 feature_names = [f'Feature_{i}' for i in range(X.shape[1])]
@@ -37,15 +38,24 @@ def analyze_cluster_characteristics(X, labels, feature_names, original_data=None
         else:
             df = X.copy()
             
-        # Thêm cột cluster cho clustering data
+        # Kiểm tra feature_names cho PCA components
+        pc_pattern = re.compile(r'^PC\d+$')
+        is_using_pca = all(pc_pattern.match(f) for f in feature_names if isinstance(f, str))
+        if is_using_pca:
+            logging.info("Detected PCA components in feature_names, will use original_data for analysis")
+            
+        # Thêm cột cluster
         df['cluster'] = labels
-        
-        # Chuẩn bị dữ liệu gốc
+          # Sử dụng dữ liệu gốc nếu có
         if original_data is not None:
             if isinstance(original_data, np.ndarray):
-                # Tạo DataFrame từ original_data
-                original_feature_names = [f'Original_Feature_{i}' for i in range(original_data.shape[1])]
-                original_df = pd.DataFrame(original_data, columns=original_feature_names)
+                # Đảm bảo số lượng feature_names trùng khớp với số cột của original_data
+                if original_data.shape[1] != len(feature_names):
+                    logging.warning(f"Feature names count ({len(feature_names)}) doesn't match original_data columns ({original_data.shape[1]}). Using generic names.")
+                    original_feature_names = [f'Feature_{i}' for i in range(original_data.shape[1])]
+                    original_df = pd.DataFrame(original_data, columns=original_feature_names)
+                else:
+                    original_df = pd.DataFrame(original_data, columns=feature_names)
             else:
                 original_df = original_data.copy()
                 
@@ -57,20 +67,14 @@ def analyze_cluster_characteristics(X, labels, feature_names, original_data=None
             # Thêm cột cluster
             if len(original_df) == len(labels):
                 original_df['cluster'] = labels
-                logging.info(f"Added cluster labels to original data. Shape: {original_df.shape}")
             else:
-                logging.warning(f"Length mismatch: original_df ({len(original_df)}) vs labels ({len(labels)}). Using clustering data instead.")
+                logging.warning(f"Length mismatch: original_df ({len(original_df)}) vs labels ({len(labels)}). Using df instead.")
                 original_df = df.copy()
         else:
             original_df = df.copy()
-            logging.info("No original data provided, using clustering data")
         
         cluster_analysis = {}
         unique_clusters = sorted(df['cluster'].unique())
-        
-        # Lấy danh sách feature names từ original data (bỏ qua cột cluster)
-        analysis_feature_names = [col for col in original_df.columns if col != 'cluster']
-        logging.info(f"Analysis feature names: {analysis_feature_names[:5]}... (total: {len(analysis_feature_names)})")
         
         for cluster_id in unique_clusters:
             cluster_data = df[df['cluster'] == cluster_id]
@@ -79,93 +83,82 @@ def analyze_cluster_characteristics(X, labels, feature_names, original_data=None
             cluster_size = len(cluster_data)
             cluster_percentage = (cluster_size / len(df)) * 100
             
-            # Tính trung bình từ dữ liệu đã chuẩn hóa (để xếp hạng)
+            # Tính trung bình của cụm và tổng thể
             cluster_means = cluster_data[feature_names].mean()
             overall_means = df[feature_names].mean()
-            mean_differences = cluster_means - overall_means
+            original_cluster_means = original_cluster_data[feature_names].mean()
             
-            # Tính trung bình từ dữ liệu gốc thực tế (để hiển thị)
-            original_cluster_means = original_cluster_data[analysis_feature_names].mean()
-            original_overall_means = original_df[analysis_feature_names].mean()
+            # Tính độ lệch so với trung bình tổng thể
+            mean_differences = cluster_means - overall_means
             
             # Tìm features đặc trưng (có độ lệch lớn nhất)
             distinctive_features = []
             
-            # Sắp xếp theo độ lệch tuyệt đối từ normalized data
+            # Sắp xếp theo độ lệch tuyệt đối
             sorted_features = mean_differences.abs().sort_values(ascending=False)
             
-            # Lấy top features từ normalized data nhưng hiển thị bằng original data
-            for i, norm_feature in enumerate(sorted_features.head(top_features).index):
-                if i < len(analysis_feature_names):
-                    # Lấy tên feature gốc tương ứng
-                    original_feature_name = analysis_feature_names[i]
-                    
-                    # Lấy giá trị từ dữ liệu gốc
-                    cluster_mean_original = original_cluster_means[original_feature_name]
-                    overall_mean_original = original_overall_means[original_feature_name]
-                    
-                    # Tính difference từ normalized data để classify significance
-                    difference_normalized = mean_differences[norm_feature]
-                    
-                    # Phân loại mức độ đặc trưng dựa trên normalized difference
-                    if abs(difference_normalized) > 2:
-                        significance = "Rất cao"
-                    elif abs(difference_normalized) > 1:
-                        significance = "Cao"
-                    elif abs(difference_normalized) > 0.5:
-                        significance = "Trung bình"
-                    else:
-                        significance = "Thấp"
-                    
-                    # Xác định xu hướng
-                    if difference_normalized > 0:
-                        trend = "cao hơn"
-                        trend_icon = "📈"
-                    else:
-                        trend = "thấp hơn"
-                        trend_icon = "📉"
-                    
-                    # Tính số lượng phần tử có giá trị cao/thấp
-                    threshold = overall_mean_original
-                    if difference_normalized > 0:
-                        count_above_threshold = (original_cluster_data[original_feature_name] > threshold).sum()
-                        percentage_above = (count_above_threshold / cluster_size) * 100
-                        description = f"{count_above_threshold}/{cluster_size} phần tử ({percentage_above:.1f}%) có {original_feature_name} > {threshold:.2f}"
-                    else:
-                        count_below_threshold = (original_cluster_data[original_feature_name] < threshold).sum()
-                        percentage_below = (count_below_threshold / cluster_size) * 100
-                        description = f"{count_below_threshold}/{cluster_size} phần tử ({percentage_below:.1f}%) có {original_feature_name} < {threshold:.2f}"
-                    
-                    # Tính percentile
-                    percentile = (original_cluster_data[original_feature_name] > overall_mean_original).mean() * 100
-                    
-                    distinctive_features.append({
-                        'feature': original_feature_name,  # Hiển thị tên feature gốc
-                        'cluster_mean': cluster_mean_original,  # Giá trị gốc
-                        'overall_mean': overall_mean_original,  # Giá trị gốc
-                        'difference': difference_normalized,  # Normalized difference để sort
-                        'abs_difference': abs(difference_normalized),
-                        'trend': trend,
-                        'trend_icon': trend_icon,
-                        'significance': significance,
-                        'percentile': percentile,
-                        'description': description
-                    })
+            for feature in sorted_features.head(top_features).index:
+                difference = mean_differences[feature]
+                cluster_mean_original = original_cluster_means[feature]
+                overall_mean_original = df[feature_names].mean()[feature] if original_data is None else original_data[feature_names].mean()[feature]
+                
+                # Tính percentile để hiểu vị trí của cụm
+                percentile = (original_cluster_data[feature] > overall_mean_original).mean() * 100
+                
+                # Phân loại mức độ đặc trưng
+                if abs(difference) > 2:  # Rất đặc trưng
+                    significance = "Rất cao"
+                elif abs(difference) > 1:  # Khá đặc trưng
+                    significance = "Cao"
+                elif abs(difference) > 0.5:  # Trung bình
+                    significance = "Trung bình"
+                else:
+                    significance = "Thấp"
+                
+                # Xác định xu hướng
+                if difference > 0:
+                    trend = "cao hơn"
+                    trend_icon = "📈"
+                else:
+                    trend = "thấp hơn"
+                    trend_icon = "📉"
+                
+                # Tính số lượng phần tử có giá trị cao/thấp
+                threshold = overall_mean_original
+                if difference > 0:
+                    count_above_threshold = (original_cluster_data[feature] > threshold).sum()
+                    percentage_above = (count_above_threshold / cluster_size) * 100
+                    description = f"{count_above_threshold}/{cluster_size} phần tử ({percentage_above:.1f}%) có {feature} > {threshold:.2f}"
+                else:
+                    count_below_threshold = (original_cluster_data[feature] < threshold).sum()
+                    percentage_below = (count_below_threshold / cluster_size) * 100
+                    description = f"{count_below_threshold}/{cluster_size} phần tử ({percentage_below:.1f}%) có {feature} < {threshold:.2f}"
+                
+                distinctive_features.append({
+                    'feature': feature,
+                    'cluster_mean': cluster_mean_original,
+                    'overall_mean': overall_mean_original,
+                    'difference': difference,
+                    'abs_difference': abs(difference),
+                    'trend': trend,
+                    'trend_icon': trend_icon,
+                    'significance': significance,
+                    'percentile': percentile,
+                    'description': description
+                })
             
             # Tìm features có phương sai thấp nhất trong cụm (ổn định)
             cluster_stds = cluster_data[feature_names].std()
             most_stable_features = cluster_stds.sort_values().head(5)
             
             stable_features = []
-            for j, feature in enumerate(most_stable_features.index):
-                if j < len(analysis_feature_names):
-                    original_feature_name = analysis_feature_names[j]
-                    stable_features.append({
-                        'feature': original_feature_name,
-                        'std': cluster_stds[feature],
-                        'mean': original_cluster_means[original_feature_name],
-                        'description': f"{original_feature_name} rất ổn định (std: {cluster_stds[feature]:.3f})"
-                    })
+            for feature in most_stable_features.index:
+                stable_features.append({
+                    'feature': feature,
+                    'std': cluster_stds[feature],
+                    'mean': original_cluster_means[feature],
+                    'description': f"{feature} rất ổn định (std: {cluster_stds[feature]:.3f})"
+                })
             
             # Tạo mô tả tổng quan cho cụm
             top_3_features = distinctive_features[:3]
@@ -186,13 +179,12 @@ def analyze_cluster_characteristics(X, labels, feature_names, original_data=None
                 'stable_features': stable_features,
                 'cluster_means': original_cluster_means.to_dict(),
                 'statistics': {
-                    'min_values': original_cluster_data[analysis_feature_names].min().to_dict(),
-                    'max_values': original_cluster_data[analysis_feature_names].max().to_dict(),
-                    'std_values': original_cluster_data[analysis_feature_names].std().to_dict()
+                    'min_values': original_cluster_data[feature_names].min().to_dict(),
+                    'max_values': original_cluster_data[feature_names].max().to_dict(),
+                    'std_values': original_cluster_data[feature_names].std().to_dict()
                 }
             }
         
-        logging.info(f"Successfully analyzed {len(cluster_analysis)} clusters")
         return cluster_analysis
     
     except Exception as e:
@@ -271,26 +263,23 @@ def create_cluster_comparison_table(cluster_analysis, feature_names):
         for feature in feature_names:
             row = {'Feature': feature}
             
-            # Kiểm tra xem feature có tồn tại trong cluster_means không
-            cluster_values = {}
             for cluster_id in sorted(cluster_analysis.keys()):
-                if feature in cluster_analysis[cluster_id]['cluster_means']:
-                    cluster_mean = cluster_analysis[cluster_id]['cluster_means'][feature]
-                    row[f'Cụm {cluster_id}'] = f"{cluster_mean:.2f}"
-                    cluster_values[cluster_id] = cluster_mean
-                else:
-                    logging.warning(f"Feature {feature} not found in cluster {cluster_id} means")
+                cluster_mean = cluster_analysis[cluster_id]['cluster_means'][feature]
+                row[f'Cụm {cluster_id}'] = f"{cluster_mean:.2f}"
             
-            # Tìm cụm có giá trị cao nhất và thấp nhất nếu có dữ liệu
-            if cluster_values:
-                max_cluster = max(cluster_values, key=cluster_values.get)
-                min_cluster = min(cluster_values, key=cluster_values.get)
-                
-                row['Cao nhất'] = f"Cụm {max_cluster}"
-                row['Thấp nhất'] = f"Cụm {min_cluster}"
-                row['Chênh lệch'] = f"{cluster_values[max_cluster] - cluster_values[min_cluster]:.2f}"
-                
-                comparison_data.append(row)
+            # Tìm cụm có giá trị cao nhất và thấp nhất
+            cluster_values = {}
+            for cluster_id in cluster_analysis.keys():
+                cluster_values[cluster_id] = cluster_analysis[cluster_id]['cluster_means'][feature]
+            
+            max_cluster = max(cluster_values, key=cluster_values.get)
+            min_cluster = min(cluster_values, key=cluster_values.get)
+            
+            row['Cao nhất'] = f"Cụm {max_cluster}"
+            row['Thấp nhất'] = f"Cụm {min_cluster}"
+            row['Chênh lệch'] = f"{cluster_values[max_cluster] - cluster_values[min_cluster]:.2f}"
+            
+            comparison_data.append(row)
         
         return pd.DataFrame(comparison_data)
         

@@ -126,11 +126,11 @@ def cluster_analysis_dashkit():
                     # Thực hiện phân cụm
                     labels = get_cluster_predictions(clustering_data, selected_model, selected_k)
                     logging.info(f"Got cluster labels: {len(labels)} samples, {len(set(labels))} unique clusters")
-                      # Chuẩn bị dữ liệu gốc cho phân tích (LUÔN SỬ DỤNG DỮ LIỆU GỐC CHƯA CHUẨN HÓA)
-                    if use_pca:
+                    
+                    # Chuẩn bị dữ liệu gốc cho phân tích                    if use_pca:
                         # Nếu dùng PCA, sử dụng dữ liệu gốc với features đã chọn
-                        selected_features_file = os.path.join(current_app.config['UPLOAD_FOLDER'], 'selected_features.txt')
-                        try:
+                    selected_features_file = os.path.join(current_app.config['UPLOAD_FOLDER'], 'selected_features.txt')
+                    try:
                             if os.path.exists(selected_features_file):
                                 with open(selected_features_file, 'r') as f:
                                     content = f.read().strip()
@@ -143,28 +143,28 @@ def cluster_analysis_dashkit():
                                         logging.info(f"Found {len(available_original_features)}/{len(original_features)} features in original data")
                                         
                                         if available_original_features:
-                                            # Dùng dữ liệu gốc THỰC SỰ (chưa chuẩn hóa)
+                                            # Dùng những features có sẵn
                                             analysis_data = original_data[available_original_features].copy()
                                             analysis_data = analysis_data.fillna(analysis_data.mean())
-                                            logging.info(f"Using {len(available_original_features)} available ORIGINAL features for analysis")
+                                            logging.info(f"Using {len(available_original_features)} available original features for analysis")
                                         else:
-                                            # Fallback to all numeric columns from original data
+                                            # Fallback to numeric columns
                                             numeric_cols = original_data.select_dtypes(include=[np.number]).columns.tolist()
                                             analysis_data = original_data[numeric_cols].copy()
                                             analysis_data = analysis_data.fillna(analysis_data.mean())
-                                            logging.info(f"Fallback: using {len(numeric_cols)} numeric columns from ORIGINAL data")
+                                            logging.info(f"Fallback: using {len(numeric_cols)} numeric columns for analysis")
                                     else:
                                         # No content in selected_features.txt
                                         numeric_cols = original_data.select_dtypes(include=[np.number]).columns.tolist()
                                         analysis_data = original_data[numeric_cols].copy()
                                         analysis_data = analysis_data.fillna(analysis_data.mean())
-                                        logging.info(f"No selected features found, using {len(numeric_cols)} numeric columns from ORIGINAL data")
+                                        logging.info(f"No selected features found, using {len(numeric_cols)} numeric columns")
                             else:
                                 # No selected_features.txt file
                                 numeric_cols = original_data.select_dtypes(include=[np.number]).columns.tolist()
                                 analysis_data = original_data[numeric_cols].copy()
                                 analysis_data = analysis_data.fillna(analysis_data.mean())
-                                logging.info(f"No selected features file found, using {len(numeric_cols)} numeric columns from ORIGINAL data")
+                                logging.info(f"No selected features file found, using {len(numeric_cols)} numeric columns")
                                 
                             # Kiểm tra NaN sau khi xử lý
                             if analysis_data.isna().any().any():
@@ -172,13 +172,11 @@ def cluster_analysis_dashkit():
                                 logging.warning(f"Found {nan_count} NaN values in analysis_data after fillna, replacing with zeros")
                                 analysis_data = analysis_data.fillna(0)
                                 
-                        except Exception as e:
+                    except Exception as e:
                             logging.error(f"Error preparing analysis data: {str(e)}")
-                            # Fallback to safe option with original data
-                            logging.info("Falling back to numeric columns from original data")
-                            numeric_cols = original_data.select_dtypes(include=[np.number]).columns.tolist()
-                            analysis_data = original_data[numeric_cols].copy()
-                            analysis_data = analysis_data.fillna(analysis_data.mean())
+                            # Fallback to safe option
+                            logging.info("Falling back to DataFrame from clustering_data")
+                            analysis_data = pd.DataFrame(clustering_data, columns=[f"PC{i+1}" for i in range(clustering_data.shape[1])])                    
                     else:
                         # Nếu không dùng PCA, dùng chính dữ liệu đang clustering
                             analysis_data = pd.DataFrame(clustering_data, columns=feature_names)
@@ -276,29 +274,40 @@ def cluster_analysis_dashkit():
                     else:
                         # Không dùng PCA, dùng trực tiếp feature_names
                         analysis_feature_names = feature_names
-                        logging.info(f"Not using PCA, using original feature_names: {feature_names}")                    # Phân tích đặc trưng cụm với dữ liệu gốc thực sự
+                        logging.info(f"Not using PCA, using original feature_names: {feature_names}")
+                      # Phân tích đặc trưng cụm với các đặc trưng gốc
                     if use_pca:
-                        # Khi dùng PCA, sử dụng tên cột từ analysis_data (dữ liệu gốc)
-                        analysis_feature_names = list(analysis_data.columns)
-                        cluster_analysis = analyze_cluster_characteristics(
-                            X=clustering_data,  # Dữ liệu đã chuẩn hóa để phân cụm
-                            labels=labels,
-                            feature_names=feature_names,  # Tên features của clustering_data (PC1, PC2, etc.)
-                            original_data=analysis_data,  # Dữ liệu gốc thực sự
-                            top_features=len(analysis_data.columns)
-                        )
-                        logging.info(f"Analyzed clusters with PCA using {len(analysis_feature_names)} ORIGINAL feature columns")
-                    else:
-                        # Không dùng PCA, analysis_data chính là clustering_data
-                        analysis_feature_names = feature_names
+                        # Khi dùng PCA, đảm bảo sử dụng đúng tên cột trong analysis_data
+                        column_names = list(analysis_data.columns)
                         cluster_analysis = analyze_cluster_characteristics(
                             X=clustering_data,
                             labels=labels,
-                            feature_names=feature_names,
+                            feature_names=column_names,  # Sử dụng column_names để khớp với analysis_data
                             original_data=analysis_data,
                             top_features=len(analysis_data.columns)
                         )
-                        logging.info(f"Analyzed clusters without PCA using {len(analysis_feature_names)} feature columns")
+                        logging.info(f"Analyzed clusters with PCA using {len(column_names)} feature columns")
+                    else:
+                        # Không dùng PCA, đảm bảo feature_names khớp với số cột
+                        if clustering_data.shape[1] != len(feature_names):
+                            logging.warning(f"Feature names count ({len(feature_names)}) doesn't match clustering_data columns ({clustering_data.shape[1]})")
+                            temp_feature_names = [f'Feature_{i}' for i in range(clustering_data.shape[1])]
+                            cluster_analysis = analyze_cluster_characteristics(
+                                X=clustering_data,
+                                labels=labels,
+                                feature_names=temp_feature_names,
+                                original_data=analysis_data,
+                                top_features=len(analysis_data.columns)
+                            )
+                        else:
+                            cluster_analysis = analyze_cluster_characteristics(
+                                X=clustering_data,
+                                labels=labels,
+                                feature_names=feature_names,
+                                original_data=analysis_data,
+                                top_features=len(analysis_data.columns)
+                            )
+                        logging.info(f"Analyzed clusters without PCA using {len(feature_names)} original features")
                     
                     if not cluster_analysis:
                         raise ValueError("Cluster analysis returned empty results")
