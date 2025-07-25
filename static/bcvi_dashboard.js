@@ -59,31 +59,33 @@ function setupLazyLoading() {
 
 // Cập nhật các chỉ báo độ ưu tiên cho các trường hợp alpha
 function updateAlphaIndicators() {
+    console.log("updateAlphaIndicators được gọi!");
     document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
         const value = parseFloat(input.value) || 0;
         const k = input.getAttribute('data-k');
         const indicator = document.querySelector(`.priority-indicator[data-k="${k}"]`);
         
+        console.log(`Cập nhật độ ưu tiên: K=${k}, Alpha=${value}, Type=${typeof value}`);
+        
         if (indicator) {
             let text = '';
             let className = 'badge ';
             
-            if (value < 1) {
+            if (value < 5) {
                 text = 'Thấp';
                 className += 'bg-info';
-            } else if (value === 1) {
-                text = 'Chuẩn';
-                className += 'bg-secondary';
-            } else if (value <= 10) {
-                text = 'Cao';
+            } else if (value >= 5 && value <= 25) {
+                text = 'Trung bình';
                 className += 'bg-warning';
-            } else if (value <= 100) {
-                text = 'Rất cao';
+            } else if (value > 25 && value <= 50) {
+                text = 'Cao';
                 className += 'bg-danger';
             } else {
-                text = 'Cực cao';
+                text = 'Rất cao';
                 className += 'bg-dark';
             }
+            
+            console.log(`Kết quả phân loại: K=${k}, Alpha=${value}, Priority=${text}, Class=${className}`);
             
             indicator.textContent = text;
             indicator.className = className;

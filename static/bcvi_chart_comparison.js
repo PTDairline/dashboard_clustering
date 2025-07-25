@@ -43,7 +43,8 @@ function createBCVIComparisonChart(modelName, bcviData) {
         'silhouette': 'rgb(75, 192, 192)',
         'calinski_harabasz': 'rgb(255, 99, 132)',
         'starczewski': 'rgb(255, 205, 86)',
-        'wiroonsri': 'rgb(54, 162, 235)'
+        'wiroonsri': 'rgb(54, 162, 235)',
+        'davies_bouldin': 'rgb(153, 102, 255)'
     };
 
     // Tạo datasets cho biểu đồ
@@ -194,26 +195,43 @@ function createCVIComparisonChart(modelName, bcviData) {
         'silhouette': 'rgb(25, 142, 142)',
         'calinski_harabasz': 'rgb(205, 49, 82)',
         'starczewski': 'rgb(205, 155, 36)',
-        'wiroonsri': 'rgb(24, 112, 185)'
+        'wiroonsri': 'rgb(24, 112, 185)',
+        'davies_bouldin': 'rgb(153, 102, 255)'
     };
 
     // Tạo datasets cho biểu đồ CVI
     cviTypes.forEach(cviType => {
         if (bcviData[cviType] && bcviData[cviType].length > 0) {
             // Dữ liệu CVI gốc cho loại CVI này
-            const data = bcviData[cviType].map(item => ({
-                x: item.k,
-                y: item.cvi,  // Sử dụng giá trị CVI gốc thay vì BCVI
-                alpha: item.alpha,
-                bcvi: item.bcvi
-            }));
+            let data = [];
+            
+            // Xử lý đặc biệt cho Davies-Bouldin (càng thấp càng tốt)
+            if (cviType === 'davies_bouldin') {
+                // Đối với Davies-Bouldin, hiển thị giá trị nghịch đảo để dễ so sánh với các chỉ số khác
+                // Lưu ý: Chúng ta vẫn hiển thị giá trị gốc trong tooltip
+                data = bcviData[cviType].map(item => ({
+                    x: item.k,
+                    y: 1 / Math.max(item.cvi, 0.001), // Nghịch đảo giá trị, tránh chia cho 0
+                    alpha: item.alpha,
+                    bcvi: item.bcvi,
+                    originalValue: item.cvi // Lưu giá trị gốc để hiển thị trong tooltip
+                }));
+            } else {
+                // Các chỉ số khác (càng cao càng tốt)
+                data = bcviData[cviType].map(item => ({
+                    x: item.k,
+                    y: item.cvi,
+                    alpha: item.alpha,
+                    bcvi: item.bcvi
+                }));
+            }
 
             // Thêm tất cả các giá trị k vào tập hợp
             data.forEach(item => kValues.add(item.x));
 
             // Thêm dataset cho loại CVI này
             datasets.push({
-                label: `${cviType.toUpperCase()}`,
+                label: `${cviType.toUpperCase()}${cviType === 'davies_bouldin' ? ' (nghịch đảo)' : ''}`,
                 data: data,
                 borderColor: colors[cviType] || `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`,
                 backgroundColor: colors[cviType] ? colors[cviType].replace('rgb', 'rgba').replace(')', ', 0.2)') : `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.2)`,
@@ -251,14 +269,24 @@ function createCVIComparisonChart(modelName, bcviData) {
                     callbacks: {
                         label: function(context) {
                             const label = context.dataset.label || '';
-                            const value = context.raw.y.toFixed(3);
-                            const alpha = context.raw.alpha.toFixed(2);
-                            const bcvi = context.raw.bcvi.toFixed(3);
-                            return [
-                                `${label}: ${value}`,
-                                `Alpha: ${alpha}`,
-                                `BCVI: ${bcvi}`
-                            ];
+                            let value;
+                            
+                            // Hiển thị giá trị gốc cho Davies-Bouldin trong tooltip
+                            if (context.dataset.label.includes('DAVIES_BOULDIN')) {
+                                value = context.raw.originalValue.toFixed(3);
+                                return [
+                                    `${label}: ${value} (thấp hơn tốt hơn)`,
+                                    `Alpha: ${context.raw.alpha.toFixed(2)}`,
+                                    `BCVI: ${context.raw.bcvi.toFixed(3)}`
+                                ];
+                            } else {
+                                value = context.raw.y.toFixed(3);
+                                return [
+                                    `${label}: ${value}`,
+                                    `Alpha: ${context.raw.alpha.toFixed(2)}`,
+                                    `BCVI: ${context.raw.bcvi.toFixed(3)}`
+                                ];
+                            }
                         }
                     }
                 },
@@ -295,7 +323,7 @@ function createCVIComparisonChart(modelName, bcviData) {
                 y: {
                     title: {
                         display: true,
-                        text: 'Giá trị CVI',
+                        text: 'Giá trị CVI (đã chuẩn hóa)',
                         font: {
                             weight: 'bold'
                         }

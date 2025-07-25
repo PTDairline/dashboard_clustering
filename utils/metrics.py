@@ -103,53 +103,90 @@ def starczewski_index(X, labels, centroids):
         return 0.0
 
 def wiroonsri_index(X, labels, centroids):
-    """Tính toán chỉ số Wiroonsri (WI) với tối đa 100 điểm."""
+    """Tính toán chỉ số Wiroonsri (WI) với tối đa 100 điểm. (PHIÊN BẢN CŨ, KHÔNG CHÍNH XÁC)"""
     try:
-        # Lấy mẫu 100 điểm nếu dữ liệu lớn hơn
         n = len(X)
         if n > 100:
             indices = np.random.choice(n, size=100, replace=False)
-            X_sample = X[indices]
-            labels_sample = labels[indices]
+            X_sample, labels_sample = X[indices], labels[indices]
         else:
-            X_sample = X
-            labels_sample = labels
+            X_sample, labels_sample = X, labels
         
-        if len(np.unique(labels)) < 2:
-            return 0.0
+        if len(np.unique(labels)) < 2: return 0.0
         
-        # Tính vector d và c
         d = pdist(X_sample)
-        n_pairs = len(d)
-        c = np.zeros(n_pairs)
-        
+        c = np.zeros(len(d))
         pair_idx = 0
         for i in range(len(X_sample)):
             for j in range(i + 1, len(X_sample)):
                 c[pair_idx] = np.linalg.norm(centroids[labels_sample[i]] - centroids[labels_sample[j]])
                 pair_idx += 1
         
-        # Tính NC(k)
-        std_d = np.std(d)
-        std_c = np.std(c)
+        std_d, std_c = np.std(d), np.std(c)
+        if std_d == 0 or std_c == 0: nc_k = 0.0
+        else: nc_k = np.corrcoef(d, c)[0, 1]
         
-        if std_d == 0 or std_c == 0:
-            nc_k = 0.0
-        else:
-            nc_k = np.corrcoef(d, c)[0, 1]
-            if np.isnan(nc_k):
-                nc_k = 0.0
+        d_range = np.max(d) - np.min(d) if std_d > 0 else 0
+        nc_1 = std_d / d_range if d_range > 0 else 0.0
         
-        # Tính NC(1)
-        if std_d == 0:
-            nc_1 = 0.0
-        else:
-            d_range = np.max(d) - np.min(d)
-            nc_1 = std_d / d_range if d_range > 0 else 0.0
-        
-        return max(nc_k, nc_1)
+        return max(nc_k if not np.isnan(nc_k) else 0.0, nc_1)
     except Exception:
         return 0.0
+
+# --- CÁC HÀM TRỢ GIÚP ĐỂ TÍNH WIROONSRI CHÍNH XÁC ---
+
+def _calculate_nc_for_wiroonsri(k, X, labels, centroids, global_centroid, all_point_dist_to_global_centroid):
+    """Hàm trợ giúp tính NC(k) và NC(1) một cách chính xác."""
+    if k == 1:
+        sd_d_v = np.std(all_point_dist_to_global_centroid)
+        range_d_v = np.max(all_point_dist_to_global_centroid) - np.min(all_point_dist_to_global_centroid)
+        return sd_d_v / range_d_v if range_d_v > 0 else 0.0
+
+    d = pdist(X)
+    c = np.zeros(len(d))
+    pair_idx = 0
+    for i in range(len(X)):
+        for j in range(i + 1, len(X)):
+            c[pair_idx] = np.linalg.norm(centroids[labels[i]] - centroids[labels[j]])
+            pair_idx += 1
+    if np.std(d) == 0 or np.std(c) == 0: return 0.0
+    nc_k = np.corrcoef(d, c)[0, 1]
+    return nc_k if not np.isnan(nc_k) else 0.0
+
+def _calculate_correct_wiroonsri_scores(X, k_range, model_cluster_results):
+    """Tính toán đầy đủ chỉ số Wiroonsri cho một dải giá trị k."""
+    if not model_cluster_results: return {k: 0.0 for k in k_range}
+
+    nc_values = {}
+    global_centroid = np.mean(X, axis=0)
+    all_point_dist = np.linalg.norm(X - global_centroid, axis=1)
+    nc_values[1] = _calculate_nc_for_wiroonsri(1, X, None, None, global_centroid, all_point_dist)
+    for k in k_range:
+        res = model_cluster_results.get(k)
+        nc_values[k] = _calculate_nc_for_wiroonsri(k, X, res['labels'], res['centroids'], global_centroid, all_point_dist) if res else 0.0
+
+    wi_scores = {}
+    nci1_all_k = {k: ((nc_values.get(k, 0) - nc_values.get(k-1, 0)) * (1 - nc_values.get(k, 0))) / ((nc_values.get(k+1, 0) - nc_values.get(k, 0)) * (1 - nc_values.get(k-1, 0))) if abs((nc_values.get(k+1, 0) - nc_values.get(k, 0)) * (1 - nc_values.get(k-1, 0))) > 1e-10 else np.inf for k in k_range}
+    
+    finite_nci1s = [v for v in nci1_all_k.values() if np.isfinite(v)]
+    is_case2 = not finite_nci1s or np.isinf(max(np.abs(list(nci1_all_k.values()))))
+
+    min_fin, max_fin = (min(finite_nci1s), max(finite_nci1s)) if finite_nci1s else (0, 0)
+
+    for k in k_range:
+        nc_km1, nc_k, nc_kp1 = nc_values.get(k-1,0), nc_values.get(k,0), nc_values.get(k+1,0)
+        nci1_k = nci1_all_k[k]
+        den1, den2 = (1 - nc_km1), (1 - nc_k)
+        nci2_k = ((nc_k - nc_km1) / den1 if abs(den1) > 1e-10 else 0) - ((nc_kp1 - nc_k) / den2 if abs(den2) > 1e-10 else 0)
+        
+        if is_case2:
+            if nci1_k == -np.inf: wi_scores[k] = min_fin + nci2_k
+            elif nci1_k == np.inf: wi_scores[k] = max_fin + nci2_k
+            else: wi_scores[k] = nci1_k + nci2_k
+        else:
+            wi_scores[k] = min_fin if nci1_k == -np.inf else nci1_k
+    return wi_scores
+
 
 def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False, use_pca=True):
     """

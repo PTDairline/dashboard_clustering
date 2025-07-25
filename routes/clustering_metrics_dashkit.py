@@ -57,6 +57,16 @@ def clustering_metrics_dashkit():
                                 'Starczewski': float(scores.get('starczewski', 0)) if scores.get('starczewski') is not None else 0.0,
                                 'Wiroonsri': float(scores.get('wiroonsri', 0)) if scores.get('wiroonsri') is not None else 0.0
                             }
+                            
+                            # Thêm thông tin về chiều tối ưu cho từng chỉ số
+                            result['index_directions'] = {
+                                'Silhouette': 'higher_better',
+                                'Calinski_Harabasz': 'higher_better',
+                                'Davies_Bouldin': 'lower_better',
+                                'Starczewski': 'higher_better',
+                                'Wiroonsri': 'higher_better'
+                            }
+                            
                             results.append(result)
                         except (ValueError, TypeError) as e:
                             logging.error(f"Error processing scores for {model_name}, k={k}: {str(e)}")
@@ -79,6 +89,11 @@ def clustering_metrics_dashkit():
         optimal_suggestions = {}
         if 'optimal_k_suggestions' in model_data:
             optimal_suggestions = model_data['optimal_k_suggestions']
+            
+            # Đảm bảo hiển thị đúng thông tin về Davies-Bouldin
+            for model_name, suggestions in optimal_suggestions.items():
+                if 'davies_bouldin' in suggestions:
+                    suggestions['davies_bouldin']['note'] = 'Giá trị thấp nhất là tốt nhất'
           # Nếu không có kết quả, tạo dữ liệu mẫu để hiển thị giao diện
         if not results:
             flash('Không có dữ liệu chỉ số đánh giá. Hiển thị giao diện mẫu.')
@@ -92,7 +107,14 @@ def clustering_metrics_dashkit():
                     'Calinski_Harabasz': 142.567,
                     'Davies_Bouldin': 0.892,
                     'Starczewski': 0.234,
-                    'Wiroonsri': 0.156
+                    'Wiroonsri': 0.156,
+                    'index_directions': {
+                        'Silhouette': 'higher_better',
+                        'Calinski_Harabasz': 'higher_better',
+                        'Davies_Bouldin': 'lower_better',
+                        'Starczewski': 'higher_better',
+                        'Wiroonsri': 'higher_better'
+                    }
                 },
                 {
                     'method': 'KMeans',
@@ -103,7 +125,14 @@ def clustering_metrics_dashkit():
                     'Calinski_Harabasz': 178.234,
                     'Davies_Bouldin': 0.743,
                     'Starczewski': 0.198,
-                    'Wiroonsri': 0.134
+                    'Wiroonsri': 0.134,
+                    'index_directions': {
+                        'Silhouette': 'higher_better',
+                        'Calinski_Harabasz': 'higher_better',
+                        'Davies_Bouldin': 'lower_better',
+                        'Starczewski': 'higher_better',
+                        'Wiroonsri': 'higher_better'
+                    }
                 },
                 {
                     'method': 'GMM',
@@ -114,7 +143,14 @@ def clustering_metrics_dashkit():
                     'Calinski_Harabasz': 135.421,
                     'Davies_Bouldin': 0.923,
                     'Starczewski': 0.245,
-                    'Wiroonsri': 0.167
+                    'Wiroonsri': 0.167,
+                    'index_directions': {
+                        'Silhouette': 'higher_better',
+                        'Calinski_Harabasz': 'higher_better',
+                        'Davies_Bouldin': 'lower_better',
+                        'Starczewski': 'higher_better',
+                        'Wiroonsri': 'higher_better'
+                    }
                 }
             ]
             optimal_suggestions = {}

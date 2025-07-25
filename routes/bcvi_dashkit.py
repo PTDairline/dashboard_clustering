@@ -48,7 +48,8 @@ def bcvi_dashkit():
         'optimal_k': {},
         'alpha_values': {},  # Thay thế alpha bằng alpha_values
         'cluster_stats': {},
-        'cluster_sizes': {}
+        'cluster_sizes': {},
+        'cvi_optimal_k': {}  # Thêm mới: Lưu k tối ưu cho từng CVI riêng lẻ
     }
     
     # Kiểm tra kết quả phân cụm
@@ -182,6 +183,7 @@ def bcvi_dashkit():
             # Tính BCVI sử dụng CVI scores thực tế
             bcvi_results = {}
             optimal_k = {}
+            cvi_optimal_k = {}  # Thêm mới: Lưu k tối ưu cho từng CVI riêng lẻ
             
             start_time = time.time()
             for model in data['models']:
@@ -203,41 +205,91 @@ def bcvi_dashkit():
                                 'silhouette': 0.5,  # Default values
                                 'calinski_harabasz': 100,
                                 'starczewski': 0.7,
-                                'wiroonsri': 0.6
+                                'wiroonsri': 0.6,
+                                'davies_bouldin': 0.5  # Thêm Davies-Bouldin
                             }
                     
-                    # Sử dụng CVI scores thực tế để tính BCVI
-                    cvi_types = ['silhouette', 'calinski_harabasz', 'starczewski', 'wiroonsri']
-                    model_bcvi_results = {}
+                    # Tìm k tối ưu cho từng CVI riêng lẻ
+                    if model not in cvi_optimal_k:
+                        cvi_optimal_k[model] = {}
                     
-                    # Sử dụng suggest_optimal_k để có gợi ý Wiroonsri và Starczewski cho BCVI
-                    try:
-                        if model in data.get('plots', {}):
-                            # Gợi ý K tối ưu từ Wiroonsri và Starczewski cho BCVI
-                            bcvi_optimal_k, bcvi_reasoning = suggest_optimal_k(
-                                plots=data['plots'][model],
-                                k_range=data['k_range'],
-                                use_wiroonsri_starczewski=True  # Sử dụng Wiroonsri + Starczewski cho BCVI
-                            )
-                            logging.debug(f"BCVI optimal k suggestion for {model}: {bcvi_optimal_k}")
-                            
-                            # Lưu gợi ý BCVI riêng biệt
-                            if 'bcvi_suggestions' not in data:
-                                data['bcvi_suggestions'] = {}
-                            data['bcvi_suggestions'][model] = {
-                                'k': bcvi_optimal_k,
-                                'reasoning': bcvi_reasoning,
-                                'method': 'wiroonsri_starczewski'
-                            }
-                    except Exception as e:
-                        logging.error(f"Error in BCVI suggest_optimal_k for {model}: {str(e)}")
-                        if 'bcvi_suggestions' not in data:
-                            data['bcvi_suggestions'] = {}
+                    # Tìm k tối ưu cho Silhouette (cao nhất)
+                    silhouette_scores = {int(k): model_cvi[k].get('silhouette', 0) for k in model_cvi if model_cvi[k].get('silhouette', 0) > 0}
+                    if silhouette_scores:
+                        cvi_optimal_k[model]['silhouette'] = max(silhouette_scores.items(), key=lambda x: x[1])[0]
+                    
+                    # Tìm k tối ưu cho Calinski-Harabasz (cao nhất)
+                    ch_scores = {int(k): model_cvi[k].get('calinski_harabasz', 0) for k in model_cvi if model_cvi[k].get('calinski_harabasz', 0) > 0}
+                    if ch_scores:
+                        cvi_optimal_k[model]['calinski_harabasz'] = max(ch_scores.items(), key=lambda x: x[1])[0]
+                    
+                    # Tìm k tối ưu cho Starczewski (cao nhất)
+                    starczewski_scores = {int(k): model_cvi[k].get('starczewski', 0) for k in model_cvi if model_cvi[k].get('starczewski', 0) > 0}
+                    if starczewski_scores:
+                        cvi_optimal_k[model]['starczewski'] = max(starczewski_scores.items(), key=lambda x: x[1])[0]
+                    
+                    # Tìm k tối ưu cho Wiroonsri (cao nhất)
+                    wiroonsri_scores = {int(k): model_cvi[k].get('wiroonsri', 0) for k in model_cvi if model_cvi[k].get('wiroonsri', 0) > 0}
+                    if wiroonsri_scores:
+                        cvi_optimal_k[model]['wiroonsri'] = max(wiroonsri_scores.items(), key=lambda x: x[1])[0]
+                    
+                    # Tìm k tối ưu cho Davies-Bouldin (thấp nhất)
+                    db_scores = {int(k): model_cvi[k].get('davies_bouldin', float('inf')) for k in model_cvi if model_cvi[k].get('davies_bouldin', float('inf')) < float('inf')}
+                    if db_scores:
+                        cvi_optimal_k[model]['davies_bouldin'] = min(db_scores.items(), key=lambda x: x[1])[0]
+                    
+                    # Tạo gợi ý CVI dựa trên k phổ biến nhất từ các CVI gốc
+                    if 'bcvi_suggestions' not in data:
+                        data['bcvi_suggestions'] = {}
+                    
+                    if model in cvi_optimal_k and cvi_optimal_k[model]:
+                        k_values = list(cvi_optimal_k[model].values())
+                        most_common_k = max(set(k_values), key=k_values.count)
+                        data['bcvi_suggestions'][model] = {
+                            'k': most_common_k,
+                            'reasoning': f"K phổ biến nhất từ các chỉ số CVI",
+                            'method': 'most_common_cvi'
+                        }
+                    else:
+                        # Fallback nếu không có dữ liệu CVI
                         data['bcvi_suggestions'][model] = {
                             'k': 3,
-                            'reasoning': 'Không thể tính toán gợi ý BCVI tự động',
+                            'reasoning': 'Không có đủ dữ liệu CVI',
                             'method': 'fallback'
                         }
+                    
+                    # Sử dụng CVI scores thực tế để tính BCVI
+                    cvi_types = ['silhouette', 'calinski_harabasz', 'starczewski', 'wiroonsri', 'davies_bouldin']
+                    model_bcvi_results = {}
+                    
+                    # Phần code cũ sử dụng suggest_optimal_k() không còn cần thiết nữa
+                    # try:
+                    #     if model in data.get('plots', {}):
+                    #         # Gợi ý K tối ưu từ Wiroonsri và Starczewski cho BCVI
+                    #         bcvi_optimal_k, bcvi_reasoning = suggest_optimal_k(
+                    #             plots=data['plots'][model],
+                    #             k_range=data['k_range'],
+                    #             use_wiroonsri_starczewski=True  # Sử dụng Wiroonsri + Starczewski cho BCVI
+                    #         )
+                    #         logging.debug(f"BCVI optimal k suggestion for {model}: {bcvi_optimal_k}")
+                    #         
+                    #         # Lưu gợi ý BCVI riêng biệt
+                    #         if 'bcvi_suggestions' not in data:
+                    #             data['bcvi_suggestions'] = {}
+                    #         data['bcvi_suggestions'][model] = {
+                    #             'k': bcvi_optimal_k,
+                    #             'reasoning': bcvi_reasoning,
+                    #             'method': 'wiroonsri_starczewski'
+                    #         }
+                    # except Exception as e:
+                    #     logging.error(f"Error in BCVI suggest_optimal_k for {model}: {str(e)}")
+                    #     if 'bcvi_suggestions' not in data:
+                    #         data['bcvi_suggestions'] = {}
+                    #     data['bcvi_suggestions'][model] = {
+                    #         'k': 3,
+                    #         'reasoning': 'Không thể tính toán gợi ý BCVI tự động',
+                    #         'method': 'fallback'
+                    #     }
                     
                     for cvi_type in cvi_types:
                         try:
@@ -256,9 +308,12 @@ def bcvi_dashkit():
                                         k_range_for_bcvi.append(k)
                                     elif cvi_type == 'starczewski' and model_cvi[k_str].get('starczewski', 0) != 0:
                                         cvi_values.append(model_cvi[k_str]['starczewski'])
-                                        k_range_for_bcvi.append(k)
+                                        k_range_for_bcvi.append(k)                                    
                                     elif cvi_type == 'wiroonsri' and model_cvi[k_str].get('wiroonsri', 0) != 0:
                                         cvi_values.append(model_cvi[k_str]['wiroonsri'])
+                                        k_range_for_bcvi.append(k)
+                                    elif cvi_type == 'davies_bouldin' and model_cvi[k_str].get('davies_bouldin', 0) != 0:
+                                        cvi_values.append(model_cvi[k_str]['davies_bouldin'])
                                         k_range_for_bcvi.append(k)
                             
                             if len(cvi_values) >= 2:  # Cần ít nhất 2 giá trị để tính BCVI
@@ -281,9 +336,8 @@ def bcvi_dashkit():
                                 logging.debug(f"alpha_for_bcvi: {alpha_for_bcvi}")
                                 logging.debug(f"Alpha mapping: {dict(zip(k_range_for_bcvi, alpha_for_bcvi))}")
                                 logging.debug(f"Alpha sum (α_0): {sum(alpha_for_bcvi)}")
-                                
-                                # Xác định loại tối ưu (max hoặc min)
-                                opt_type = 'max' if cvi_type in ['silhouette', 'calinski_harabasz', 'starczewski', 'wiroonsri'] else 'min'
+                                  # Xác định loại tối ưu (max hoặc min)
+                                opt_type = 'min' if cvi_type in ['davies_bouldin'] else 'max'
                                 logging.debug(f"Optimization type: {opt_type}")
                                 
                                 # Tính BCVI
@@ -324,6 +378,19 @@ def bcvi_dashkit():
                                 # Tìm k có BCVI cao nhất
                                 best_result = max(results_list, key=lambda x: x['bcvi'])
                                 optimal_k[model][cvi_type] = best_result['k']
+                                
+                        # Tạo gợi ý dựa trên CVI tối ưu
+                        if 'bcvi_based_suggestions' not in data:
+                            data['bcvi_based_suggestions'] = {}
+                        
+                        # Lấy k phổ biến nhất từ optimal_k
+                        if model in optimal_k and optimal_k[model]:
+                            k_values = list(optimal_k[model].values())
+                            most_common_k = max(set(k_values), key=k_values.count)
+                            data['bcvi_based_suggestions'][model] = {
+                                'k': most_common_k,
+                                'reasoning': f"K phổ biến nhất từ BCVI"
+                            }
                             
                 except Exception as e:
                     logging.error(f"Error computing BCVI for {model}: {str(e)}")
@@ -334,12 +401,14 @@ def bcvi_dashkit():
             
             data['bcvi_results'] = bcvi_results
             data['optimal_k'] = optimal_k
+            data['cvi_optimal_k'] = cvi_optimal_k  # Lưu k tối ưu cho từng CVI riêng lẻ
             
             # Lưu cache
             try:
                 cache_data = data.copy()
                 essential_keys = ['k_range', 'selected_k', 'models', 'plots', 'bcvi_results', 
-                               'optimal_k', 'alpha_values', 'optimal_k_suggestions', 'bcvi_suggestions']
+                               'optimal_k', 'alpha_values', 'optimal_k_suggestions', 'bcvi_suggestions',
+                               'cvi_optimal_k']  # Thêm cvi_optimal_k vào cache
                 cache_data = {key: data[key] for key in essential_keys if key in data}
                 
                 pd.to_pickle(cache_data, bcvi_cache_file, compression='gzip')

@@ -7,6 +7,8 @@
 <!-- Scripts sẽ được định nghĩa ở cuối file -->
 
 {% block extra_css %}
+<!-- Thêm file JS cho dashboard -->
+<script src="{{ url_for('static', filename='bcvi_dashboard.js') }}"></script>
 <style>
     /* Cấu trúc layout chính */
     .card {
@@ -296,7 +298,8 @@
                                                                 step="0.01" 
                                                                 min="0.01"
                                                                 placeholder="Nhập α_{{ k }}"
-                                                                data-k="{{ k }}">
+                                                                data-k="{{ k }}"
+                                                                oninput="updateAlphaIndicators()">
                                                         </div>
                                                         <small class="text-muted">Không giới hạn trên</small>
                                                     </td>
@@ -304,7 +307,16 @@
                                                         <div class="d-flex align-items-center mb-1">
                                                             <i class="fas fa-arrow-right text-primary me-2"></i>
                                                             <span class="fw-semibold">Độ ưu tiên:</span>
-                                                            <span class="priority-indicator ms-2 badge bg-secondary" data-k="{{ k }}">Trung bình</span>
+                                                            {% set alpha_value = data.alpha_values[k] if data.alpha_values and k in data.alpha_values else 0.5 %}
+                                                            {% if alpha_value < 5 %}
+                                                                <span class="priority-indicator ms-2 badge bg-info" data-k="{{ k }}">Thấp</span>
+                                                            {% elif alpha_value >= 5 and alpha_value <= 25 %}
+                                                                <span class="priority-indicator ms-2 badge bg-warning" data-k="{{ k }}">Trung bình</span>
+                                                            {% elif alpha_value > 25 and alpha_value <= 50 %}
+                                                                <span class="priority-indicator ms-2 badge bg-danger" data-k="{{ k }}">Cao</span>
+                                                            {% else %}
+                                                                <span class="priority-indicator ms-2 badge bg-dark" data-k="{{ k }}">Rất cao</span>
+                                                            {% endif %}
                                                         </div>
                                                         <div class="text-muted">
                                                             Alpha càng lớn → BCVI({{ k }}) có trọng số cao hơn trong công thức Bayesian
@@ -360,14 +372,14 @@
                                     
                                     <div class="mb-2">
                                         <label class="form-label small">Từ gợi ý mô hình:</label>
-                                        {% if data.optimal_k_suggestions %}
-                                            {% for model, suggestion in data.optimal_k_suggestions.items() %}
-                                            <button type="button" class="btn btn-outline-info btn-sm w-100 mb-1" 
-                                                    onclick="setAlphaForOptimalK({{ suggestion.k }})">
-                                                <i class="fas fa-brain me-1"></i>{{ model }} (K={{ suggestion.k }})
-                                            </button>
-                                            {% endfor %}
-                                        {% endif %}
+                                                                                    {% if data.optimal_k_suggestions %}
+                                                {% for model, suggestion in data.optimal_k_suggestions.items() %}
+                                                <button type="button" class="btn btn-outline-info btn-sm w-100 mb-1" 
+                                                        onclick="setAlphaForOptimalK('{{ suggestion.k }}')">
+                                                    <i class="fas fa-brain me-1"></i>{{ model }} (K={{ suggestion.k }})
+                                                </button>
+                                                {% endfor %}
+                                            {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -434,62 +446,111 @@
                             </div>
                             <div class="card-body p-3">
                                 <div class="row">
+                                    {% if model in data.cvi_optimal_k %}
+                                    <div class="col-12 mb-3">
+                                        <div class="alert alert-info mb-0">
+                                            <h6 class="mb-2"><i class="fas fa-chart-bar me-2"></i>K tối ưu theo từng chỉ số:</h6>
+                                            <div class="row">
+                                                {% if 'silhouette' in data.cvi_optimal_k[model] %}
+                                                <div class="col-md-4 mb-2">
+                                                    <div class="p-2 bg-light rounded text-center">
+                                                        <div class="fw-bold">Silhouette</div>
+                                                        <span class="badge bg-success fs-5">k = {{ data.cvi_optimal_k[model]['silhouette'] }}</span>
+                                                    </div>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {% if 'calinski_harabasz' in data.cvi_optimal_k[model] %}
+                                                <div class="col-md-4 mb-2">
+                                                    <div class="p-2 bg-light rounded text-center">
+                                                        <div class="fw-bold">Calinski-Harabasz</div>
+                                                        <span class="badge bg-success fs-5">k = {{ data.cvi_optimal_k[model]['calinski_harabasz'] }}</span>
+                                                    </div>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {% if 'davies_bouldin' in data.cvi_optimal_k[model] %}
+                                                <div class="col-md-4 mb-2">
+                                                    <div class="p-2 bg-light rounded text-center">
+                                                        <div class="fw-bold">Davies-Bouldin</div>
+                                                        <span class="badge bg-danger fs-5">k = {{ data.cvi_optimal_k[model]['davies_bouldin'] }}</span>
+                                                    </div>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {% if 'starczewski' in data.cvi_optimal_k[model] %}
+                                                <div class="col-md-4 mb-2">
+                                                    <div class="p-2 bg-light rounded text-center">
+                                                        <div class="fw-bold">Starczewski</div>
+                                                        <span class="badge bg-success fs-5">k = {{ data.cvi_optimal_k[model]['starczewski'] }}</span>
+                                                    </div>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {% if 'wiroonsri' in data.cvi_optimal_k[model] %}
+                                                <div class="col-md-4 mb-2">
+                                                    <div class="p-2 bg-light rounded text-center">
+                                                        <div class="fw-bold">Wiroonsri</div>
+                                                        <span class="badge bg-success fs-5">k = {{ data.cvi_optimal_k[model]['wiroonsri'] }}</span>
+                                                    </div>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
                                     {% if model in data.optimal_k %}
                                     <div class="col-12 mb-3">
                                         <div class="alert alert-success mb-0">
-                                            <div class="d-flex align-items-center">
-                                                <i class="fas fa-trophy me-3 text-warning fs-4"></i>
-                                                <div>
-                                                    <h5 class="mb-1">Các chỉ số BCVI gợi ý:</h5>
-                                                    <div class="d-flex flex-wrap gap-2 mt-2">
-                                                        {% for cvi_type, k_optimal in data.optimal_k[model].items() %}
-                                                        <div class="p-2 bg-light rounded">
-                                                            <span class="badge bg-success fs-6 me-1">k = {{ k_optimal }}</span>
-                                                            <span class="fw-bold">{{ cvi_type|upper }}</span>
-                                                        </div>
-                                                        {% endfor %}
+                                            <h6 class="mb-2"><i class="fas fa-trophy me-2"></i>K tối ưu theo BCVI:</h6>
+                                            <div class="row">
+                                                {% for cvi_type, k_optimal in data.optimal_k[model].items() %}
+                                                <div class="col-md-4 mb-2">
+                                                    <div class="p-2 bg-light rounded text-center">
+                                                        <div class="fw-bold">{{ cvi_type|upper }}</div>
+                                                        <span class="badge bg-success fs-5">k = {{ k_optimal }}</span>
                                                     </div>
                                                 </div>
+                                                {% endfor %}
                                             </div>
                                         </div>
                                     </div>
                                     {% endif %}
                                     
-                                    {% if model in data.bcvi_based_suggestions %}
                                     <div class="col-md-6">
+                                        {% if model in data.bcvi_based_suggestions %}
                                         <div class="card mb-0">
                                             <div class="card-header bg-warning text-dark">
                                                 <h6 class="mb-0">
-                                                    <i class="fas fa-star me-2"></i>Dựa Trên BCVI
+                                                    <i class="fas fa-star me-2"></i>Số cụm tối ưu dựa trên BCVI
                                                 </h6>
                                             </div>
-                                            <div class="card-body">
-                                                <h4 class="text-center">
+                                            <div class="card-body text-center">
+                                                <h4>
                                                     <span class="badge bg-warning text-dark fs-4 p-2">k = {{ data.bcvi_based_suggestions[model].k }}</span>
                                                 </h4>
-                                                <p class="mb-0 small">{{ data.bcvi_based_suggestions[model].reasoning }}</p>
                                             </div>
                                         </div>
+                                        {% endif %}
                                     </div>
-                                    {% endif %}
                                     
-                                    {% if model in data.bcvi_suggestions %}
                                     <div class="col-md-6">
+                                        {% if model in data.bcvi_suggestions %}
                                         <div class="card mb-0">
                                             <div class="card-header bg-info text-white">
                                                 <h6 class="mb-0">
-                                                    <i class="fas fa-brain me-2"></i>Từ Wiroonsri/Starczewski
+                                                    <i class="fas fa-chart-bar me-2"></i>Số cụm tối ưu dựa trên CVI
                                                 </h6>
                                             </div>
-                                            <div class="card-body">
-                                                <h4 class="text-center">
+                                            <div class="card-body text-center">
+                                                <h4>
                                                     <span class="badge bg-info fs-4 p-2">k = {{ data.bcvi_suggestions[model].k }}</span>
                                                 </h4>
-                                                <p class="mb-0 small">{{ data.bcvi_suggestions[model].reasoning }}</p>
                                             </div>
                                         </div>
+                                        {% endif %}
                                     </div>
-                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -594,6 +655,9 @@
                                                         </td>
                                                         <td>
                                                             <span class="font-monospace">{{ "%.4f"|format(result.cvi) }}</span>
+                                                            {% if cvi_type == 'davies_bouldin' %}
+                                                            <small class="text-muted d-block">(Thấp hơn tốt hơn)</small>
+                                                            {% endif %}
                                                         </td>
                                                         <td>
                                                             <span class="fw-bold text-primary fs-6">{{ "%.4f"|format(result.bcvi) }}</span>
@@ -695,6 +759,93 @@
 
 {% block extra_js %}
 <script>
+    // Cập nhật tổng Alpha
+    function updateAlphaSum() {
+        let sum = 0;
+        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
+            sum += parseFloat(input.value) || 0;
+        });
+        
+        const sumElement = document.getElementById('alphaSum');
+        if (sumElement) {
+            sumElement.textContent = sum.toFixed(2);
+        }
+    }
+
+    // Thiết lập preset alpha
+    function setAlphaPreset(preset) {
+        const inputs = document.querySelectorAll('input[name^="alpha_"]');
+        const count = inputs.length;
+        
+        inputs.forEach((input, index) => {
+            let value = 1.0;
+
+            switch(preset) {
+                case 'uniform':
+                    value = 1.00;
+                    break;
+                case 'ascending':
+                    value = 0.50 + (index * 9.50 / (count - 1)); // 0.5 → 10
+                    break;
+                case 'descending':
+                    value = 10.00 - (index * 9.50 / (count - 1)); // 10 → 0.5
+                    break;
+                case 'peak':
+                    const mid = Math.floor(count / 2);
+                    const distance = Math.abs(index - mid);
+                    value = 25.00 - (distance * 5); // Max 25 at center
+                    break;
+                case 'extreme':
+                    value = 100.00; // Tất cả đều 100
+                    break;
+            }
+            
+            input.value = value.toFixed(2);
+            // Cập nhật độ ưu tiên cho từng input
+            updateAlphaIndicators();
+        });
+        
+        updateAlphaSum();
+    }
+
+    // Thiết lập alpha tùy chỉnh cho tất cả K
+    function setCustomAlpha() {
+        const customValue = document.getElementById('customAlpha').value;
+        if (customValue && !isNaN(customValue) && parseFloat(customValue) > 0) {
+            document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
+                input.value = parseFloat(customValue).toFixed(2);
+                // Cập nhật độ ưu tiên cho từng input
+            });
+            
+            updateAlphaIndicators();
+            updateAlphaSum();
+            
+            // Clear custom input
+            document.getElementById('customAlpha').value = '';
+        } else {
+            alert('Vui lòng nhập giá trị alpha hợp lệ (> 0)');
+        }
+    }
+
+    // Thiết lập alpha tối ưu cho k cụ thể
+    function setAlphaForOptimalK(optimalK) {
+        optimalK = parseInt(optimalK);
+        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
+            const k = parseInt(input.getAttribute('data-k'));
+            
+            if (k === optimalK) {
+                input.value = '25.00';  // Ưu tiên rất cao cho k tối ưu
+            } else {
+                input.value = '0.50';  // Ưu tiên thấp cho các k khác
+            }
+            
+            // Cập nhật độ ưu tiên cho từng input
+        });
+        
+        updateAlphaIndicators();
+        updateAlphaSum();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // Remove any loading overlay that might still be present from previous submission
         const existingOverlay = document.getElementById('bcvi-loading-overlay');
@@ -722,13 +873,8 @@
             table.style.scrollBehavior = 'smooth';
         });
         
-        // Xử lý thay đổi Alpha input
+        // Thêm sự kiện focus/blur cho input alpha
         document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
-            input.addEventListener('input', function() {
-                updateAlphaIndicators();
-                updateAlphaSum();
-            });
-            
             input.addEventListener('focus', function() {
                 this.closest('tr').style.backgroundColor = '#f8f9fa';
             });
@@ -784,122 +930,6 @@
         updateAlphaIndicators();
         updateAlphaSum();
     });
-
-    // Cập nhật các chỉ báo độ ưu tiên
-    function updateAlphaIndicators() {
-        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
-            const value = parseFloat(input.value) || 0;
-            const k = input.getAttribute('data-k');
-            const indicator = document.querySelector(`.priority-indicator[data-k="${k}"]`);
-            
-            if (indicator) {
-                let text = '';
-                let className = 'badge ';
-                
-                if (value < 1) {
-                    text = 'Thấp';
-                    className += 'bg-info';
-                } else if (value === 1) {
-                    text = 'Chuẩn';
-                    className += 'bg-secondary';
-                } else if (value <= 10) {
-                    text = 'Cao';
-                    className += 'bg-warning';
-                } else if (value <= 100) {
-                    text = 'Rất cao';
-                    className += 'bg-danger';
-                } else {
-                    text = 'Cực cao';
-                    className += 'bg-dark';
-                }
-                
-                indicator.textContent = text;
-                indicator.className = className;
-            }
-        });
-    }
-    
-    // Cập nhật tổng Alpha
-    function updateAlphaSum() {
-        let sum = 0;
-        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
-            sum += parseFloat(input.value) || 0;
-        });
-        
-        const sumElement = document.getElementById('alphaSum');
-        if (sumElement) {
-            sumElement.textContent = sum.toFixed(2);
-        }
-    }
-
-    // Thiết lập preset alpha
-    function setAlphaPreset(preset) {
-        const inputs = document.querySelectorAll('input[name^="alpha_"]');
-        const count = inputs.length;
-        
-        inputs.forEach((input, index) => {
-            let value = 1.0;
-
-            switch(preset) {
-                case 'uniform':
-                    value = 1.00;
-                    break;
-                case 'ascending':
-                    value = 0.50 + (index * 9.50 / (count - 1)); // 0.5 → 10
-                    break;
-                case 'descending':
-                    value = 10.00 - (index * 9.50 / (count - 1)); // 10 → 0.5
-                    break;
-                case 'peak':
-                    const mid = Math.floor(count / 2);
-                    const distance = Math.abs(index - mid);
-                    value = 25.00 - (distance * 5); // Max 25 at center
-                    break;
-                case 'extreme':
-                    value = 100.00; // Tất cả đều 100
-                    break;
-            }
-            
-            input.value = value.toFixed(2);
-        });
-        
-        updateAlphaIndicators();
-        updateAlphaSum();
-    }
-
-    // Thiết lập alpha tùy chỉnh cho tất cả K
-    function setCustomAlpha() {
-        const customValue = document.getElementById('customAlpha').value;
-        if (customValue && !isNaN(customValue) && parseFloat(customValue) > 0) {
-            document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
-                input.value = parseFloat(customValue).toFixed(2);
-            });
-            
-            updateAlphaIndicators();
-            updateAlphaSum();
-            
-            // Clear custom input
-            document.getElementById('customAlpha').value = '';
-        } else {
-            alert('Vui lòng nhập giá trị alpha hợp lệ (> 0)');
-        }
-    }
-
-    // Thiết lập alpha tối ưu cho k cụ thể
-    function setAlphaForOptimalK(optimalK) {
-        document.querySelectorAll('input[name^="alpha_"]').forEach(input => {
-            const k = parseInt(input.getAttribute('data-k'));
-            
-            if (k === optimalK) {
-                input.value = '25.00';  // Ưu tiên rất cao cho k tối ưu
-            } else {
-                input.value = '0.50';  // Ưu tiên thấp cho các k khác
-            }
-        });
-        
-        updateAlphaIndicators();
-        updateAlphaSum();
-    }
 </script>
 
 <!-- Thêm tham chiếu đến thư viện Chart.js -->
@@ -915,7 +945,7 @@
 {% if data.bcvi_results and data.bcvi_results|length > 0 %}
 <script>
     // Truyền dữ liệu BCVI sang JavaScript để sử dụng trong file bcvi_chart_comparison.js
-    window.bcviResults = {{ data.bcvi_results|tojson|safe }};
+    window.bcviResults = JSON.parse('{{ data.bcvi_results|tojson|safe }}');
 </script>
 {% endif %}
 {% endblock %}
