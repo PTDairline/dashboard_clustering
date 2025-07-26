@@ -15,7 +15,7 @@ import base64
 import re
 # Danh sách feature mặc định, không bao gồm Value và Release Clause
 DEFAULT_FEATURES = [
-    "Age", "Overall", "Potential", "Wage", "Height", "Weight",
+    "Age", "Overall", "Potential",
     "Crossing", "Finishing", "HeadingAccuracy", "ShortPassing", "Volleys",
     "Dribbling", "Curve", "FKAccuracy", "LongPassing", "BallControl",
     "Acceleration", "SprintSpeed", "Agility", "Reactions", "Balance",

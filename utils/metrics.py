@@ -357,7 +357,7 @@ def suggest_optimal_k(plots, k_range, use_wiroonsri_starczewski=False, use_pca=T
             else:
                 # Ưu tiên Silhouette vì nó là chỉ số đánh giá thường xuyên hơn
                 optimal_k = silhouette_k
-                reasoning.append(f"\n👉 GỢI Ý: Ưu tiên sử dụng Silhouette Score với k={optimal_k} (Elbow gợi ý k={elbow_k}).")
+                reasoning.append(f"\n👉 GỢI Ý: Gợi ý trung bình với k={optimal_k} (Elbow gợi ý k={elbow_k}).")
         elif silhouette_valid:
             optimal_k = silhouette_k
             reasoning.append(f"\n👉 GỢI Ý: Sử dụng Silhouette Score với k={optimal_k} (Elbow không khả dụng).")

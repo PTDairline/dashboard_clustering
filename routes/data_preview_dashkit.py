@@ -31,7 +31,7 @@ def data_preview_dashkit():
             data['features'] = df.columns.tolist()
             data['num_features'] = len(data['features'])
             data['feature_types'] = {col: str(df[col].dtype) for col in df.columns}
-            data['preview_data'] = df.head().to_dict('records')
+            data['preview_data'] = df.head(20).to_dict('records')
             data['file_uploaded'] = True
             data['num_rows'] = df.shape[0]
             
